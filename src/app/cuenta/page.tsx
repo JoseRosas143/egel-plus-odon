@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { authenticateStudent } from "@/lib/estudiante/repository";
+import { readStudentDashboard } from "@/lib/estudiante/dashboard-repository";
 import { StudentAccount } from "@/components/acceso/account";
 import { AccessShell } from "@/components/acceso/shell";
 import styles from "@/components/acceso/styles.module.css";
@@ -22,7 +23,8 @@ async function PrivateAccount() {
   const [profile, preferences] = await Promise.all([auth.repository.profile.read(), auth.repository.preferences.read()]);
   if (profile.failed || preferences.failed) return <Problem message="La base de datos no responde. Tus datos no se han modificado." />;
   if (!profile.data || !preferences.data) return <Problem message="Tu sesi&oacute;n existe, pero faltan datos de tu perfil. Comunica este mensaje al administrador; no crees otra cuenta." />;
-  return <StudentAccount profile={profile.data} preferences={preferences.data} />;
+  const stats = await readStudentDashboard(profile.data.user_id);
+  return <StudentAccount profile={profile.data} preferences={preferences.data} stats={stats} initialNow={new Date().toISOString()} />;
 }
 export default function AccountPage() {
   return <Suspense fallback={<AccessShell><p role="status">Comprobando tu sesi&oacute;n...</p></AccessShell>}><PrivateAccount /></Suspense>;

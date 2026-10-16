@@ -11,7 +11,7 @@ export type NoteFields = {
 };
 export type Note = NoteFields & { question_id: string; question_version: number; revision: number; updated_at: string };
 export type Attempt = { selected_answer: Letter; created_at: string };
-export type NoteListItem = Note & { position: number; stem: string };
+export type NoteListItem = Note & { position: number; stem: string; options: Question["options"]; initial_answer: Letter | null };
 export class StudyError extends Error {
  constructor(public code: string, public status = 400) { super(code); }
 }
@@ -55,7 +55,6 @@ export function addHighlight(old: Highlight[], candidate: Highlight, stem: strin
  if(candidate.start<0||candidate.end>stem.length||candidate.start>=candidate.end) throw new StudyError("INVALID_HIGHLIGHT");
  const sorted=[...old,candidate].sort((a,b)=>a.start-b.start), merged:Highlight[]=[];
  for(const h of sorted){const last=merged[merged.length-1];if(last&&h.start<=last.end){last.end=Math.max(last.end,h.end);last.quote=stem.slice(last.start,last.end);}else merged.push({...h,quote:stem.slice(h.start,h.end)});}
- // Reuse save validator to bound and validate ranges, including UTF-16 offsets.
  return noteFields({...blankNote(),highlights:merged},stem).highlights;
 }
 export interface StudyRepository {

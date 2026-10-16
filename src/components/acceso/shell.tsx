@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import styles from "./styles.module.css";
 
-export function AccessShell({ children, wide = false, action }: { children: ReactNode; wide?: boolean; action?: ReactNode }) {
+export function AccessShell({ children, wide = false, study = false, action }: { children: ReactNode; wide?: boolean; study?: boolean; action?: ReactNode }) {
   return (
-    <div lang="es" className={styles.shell}>
+    <div lang="es" className={`${styles.shell} ${study ? styles.studyShell : ""}`}>
       <header className={styles.header}>
         <a className={styles.brand} href="/login">EGEL Plus ODON</a>
         {action}
