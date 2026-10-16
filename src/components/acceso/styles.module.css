@@ -1,6 +1,24 @@
 .shell { min-height:100svh; background:#fff; color:#17253d; font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif; font-size:16px; padding:28px 24px 48px; line-height:1.6; color-scheme:light; -webkit-font-smoothing:antialiased; }
 .header { max-width:960px; margin:0 auto; padding-bottom:24px; border-bottom:1px solid #e5e5e5; display:flex; align-items:center; justify-content:space-between; gap:20px; }
-.brand { color:#171717; text-decoration:none; font-size:18px; font-weight:700; letter-spacing:-.4px; }
+.brand { display:inline-flex; align-items:center; gap:10px; flex:none; color:#1456ed; text-decoration:none; font-size:19px; font-weight:750; letter-spacing:-.5px; }
+.brandIcon { display:inline-flex; align-items:center; justify-content:center; width:31px; height:33px; border-radius:9px; background:linear-gradient(145deg,#8cbcff,#377bff); color:#fff; box-shadow:0 2px 5px #2563eb12; }
+.studentNavigation { flex:1; display:flex; align-items:center; justify-content:flex-end; gap:28px; min-width:0; }
+.desktopNavigation { display:flex; gap:22px; align-items:center; margin:auto; }
+.studentNavigation a { display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-size:12px; font-weight:550; color:#2451ae; white-space:nowrap; }
+.desktopNavigation a { min-height:40px; border-bottom:2px solid transparent; }
+.desktopNavigation a[aria-current="page"] { color:#1555ff; border-color:#377bff; }
+.studentNavigation a:hover { color:#1249c7; }
+.studentNavigation .accountLink { gap:7px; }
+.avatar { display:inline-flex; width:30px; height:30px; justify-content:center; align-items:center; border-radius:50%; background:#e9f1ff; color:#2159e8; }
+.mobileNavigation { display:none; position:relative; }
+.mobileNavigation summary { display:flex; align-items:center; gap:5px; cursor:pointer; list-style:none; color:#2451ae; font-size:13px; padding:7px 0; }
+.mobileNavigation summary::-webkit-details-marker { display:none; }
+.mobileNavigation nav { position:absolute; top:100%; right:0; z-index:100; width:190px; padding:8px; background:#fff; border:1px solid #dce8fc; border-radius:12px; box-shadow:0 12px 30px #17365c1c; }
+.mobileNavigation nav a { display:flex; padding:11px; border-radius:7px; }
+.mobileNavigation nav a[aria-current="page"] { background:#edf4ff; }
+.mobileNavigation summary:focus-visible { outline:2px solid #2563eb; }
+@media(max-width:1100px) { .desktopNavigation{gap:12px}.studentNavigation{gap:14px}.studentNavigation a{font-size:11px} }
+@media(max-width:850px) { .desktopNavigation{display:none}.mobileNavigation{display:block}.studentNavigation{gap:15px}.studentNavigation .accountLink > span:last-child{display:none} }
 .header a:focus-visible,.shell a:focus-visible { outline:3px solid #2563eb; outline-offset:4px; }
 .main { max-width:440px; margin:64px auto 0; }
 .wide { max-width:960px; margin:48px auto 0; }
@@ -42,7 +60,7 @@
 .studyShell .header { border-color:#dbe5f1; }
 .studyShell .notice { background:#eff6ff; border-color:#93c5fd; color:#334a6c; }
 .studyShell .sectionTitle { color:#17253d; }
-.studyShell .header { max-width:none; margin:0; padding-bottom:8px; flex:none; }
+.studyShell .header { max-width:none; margin:0; padding:0 8px 8px; flex:none; min-height:44px; }
 .studyShell .wide { max-width:none; width:100%; margin:8px 0 0; flex:1; min-height:0; display:flex; flex-direction:column; }
 .studyShell .title { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
 .studyShell .subtitle,.studyShell .footer { display:none; }

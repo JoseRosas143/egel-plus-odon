@@ -4,6 +4,10 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import a from "@/components/acceso/styles.module.css";
 import s from "./styles.module.css";
 import { tutorCommands, type TutorCommand } from "@/lib/estudio/tutor-commands";
+import { AppIcon } from "@/components/acceso/app-icon";
+import dynamic from "next/dynamic";
+import type { Literature } from "./use-literature";
+const TutorRichText = dynamic(() => import("./tutor-rich-text").then(m => m.TutorRichText), { loading: () => <p>Preparando formato…</p> });
 
 export type TutorView = "base" | "segunda" | "comparar";
 export type ChatDrafts = Record<TutorView, string>;
@@ -21,23 +25,25 @@ const commands = [
 ] as const;
 export type StudyCommand = typeof commands[number]["text"];
 
-export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepare, onNotice }: {
+export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepare, onNotice, literature, answered, view, onView }: {
   position: number; busy: boolean; drafts: ChatDrafts;
+  literature: Literature; answered: boolean;
+  view: TutorView; onView: (view: TutorView) => void;
   onDraft: (view: TutorView, value: string) => void;
   onCommand: (command: StudyCommand) => Promise<boolean>;
   onPrepare: (command: TutorCommand, view: TutorView) => boolean;
   onNotice: (text: string) => void;
 }) {
-  const [view, setView] = useState<TutorView>("base");
   const [pending, setPending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [preview, setPreview] = useState(false);
   const composer = useRef<HTMLFormElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const current = views.find(item => item.key === view)!;
   const draft = drafts[view];
   const command = commands.find(item => item.text === draft.trim().toLowerCase());
   const tutorCommand = tutorCommands.find(item => item.command === draft.trim().toLowerCase());
-  const canExecute = !!command || !!tutorCommand;
+  const canExecute = !!command || !!tutorCommand || (view === "base" && answered && literature.enabled && literature.covered && !literature.pending && !!draft.trim());
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -69,9 +75,13 @@ export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepa
     event.preventDefault();
     if (tutorCommand) prepare(tutorCommand.command);
     else if (command) void run(command.text);
+    else if (canExecute && !literature.sending) {
+      const sent = draft;
+      void literature.send(sent).then(ok => { if (ok) onDraft(view, ""); });
+    }
   }
   function prepare(command: TutorCommand) {
-    if (busy || pending) return;
+    if (busy || pending || literature.sending) return;
     setMenuOpen(false);
     onPrepare(command, view);
   }
@@ -83,38 +93,65 @@ export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepa
     else if (event.key === "End") next = views.length - 1;
     else return;
     event.preventDefault();
-    setView(views[next].key);
+    onView(views[next].key);
     setMenuOpen(false);
     document.getElementById("tutor-tab-" + views[next].key)?.focus();
   }
   return <>
     <div className={s.panelHeading}>
-      <h2 className={a.sectionTitle}>Tutor IA<span className={s.srOnly}> · Reactivo {position}</span></h2>
-      <button type="button" className={s.connection} title="Ver estado del tutor" onClick={() => onNotice("El tutor aún no está conectado. Puedes escribir borradores y usar los comandos de estudio.")}>Sin conexión</button>
+      <h2 className={a.sectionTitle}><AppIcon name="shield" />Tutor IA<span className={s.srOnly}> · Reactivo {position}</span></h2>
+      <button type="button" className={s.connection} title="Ver alcance del tutor" onClick={() => onNotice(view === "base" ? "Piloto local: Malamed 5.ª ed. (2006), solo PDF 61–70 y reactivo 034. Hasta 6 consultas en total; sin llamadas a OpenAI. No es una clave oficial." : "Esta vista todavía no está conectada. No se generarán dictámenes simulados.")}>{view === "base" && literature.enabled ? "Piloto · Malamed" : "Sin conexión"}</button>
     </div>
     <div className={s.tutorTabs} role="tablist" aria-label="Vistas del tutor">
       {views.map((item, index) => <button type="button" key={item.key} id={"tutor-tab-" + item.key}
         role="tab" aria-selected={view === item.key} aria-controls="tutor-content" aria-label={item.full} title={item.full}
         tabIndex={view === item.key ? 0 : -1} onKeyDown={event => switchTab(event, index)}
-        onClick={() => { setView(item.key); setMenuOpen(false); }}>{item.label}</button>)}
+        onClick={() => { onView(item.key); setMenuOpen(false); }}>{item.label}</button>)}
     </div>
-    <div className={s.chatHistory} id="tutor-content" role="tabpanel" aria-labelledby={"tutor-tab-" + view}>
-      <p className={s.chatEmpty}>{current.empty}</p>
+    <div className={s.chatHistory} id="tutor-content" role="tabpanel" aria-labelledby={"tutor-tab-" + view} aria-busy={view === "base" && literature.sending}>
+      {preview && draft.trim() ? null : view === "base" ? <>
+        {literature.messages.map(message => <article className={message.role === "assistant" ? s.tutorAnswer : s.tutorQuestion} key={message.id}>
+          <span className={s.messageAuthor}>{message.role === "assistant" ? "Literatura · Gemini" : "Tú"}</span>
+          <div data-tutor-response={message.role === "assistant" ? "true" : undefined}><TutorRichText text={message.text} /></div>
+          {message.citations.length ? <details className={s.citationList}><summary>Fuentes recuperadas · {message.citations.length} páginas</summary><p>Abre estos enlaces para revisar el respaldo. Los números escritos por el modelo no sustituyen estos metadatos. Es una edición histórica.</p>
+            {message.citations.map(c => <a key={c.page} href={c.href} target="_blank" rel="noopener noreferrer">{c.label} ↗</a>)}</details> : null}
+        </article>)}
+        {literature.loading ? <p role="status">Cargando historial…</p> : null}
+        {!literature.loading && !literature.messages.length ? <div className={s.chatWelcome}><span className={s.welcomeIcon}><AppIcon name="book" size={34} /></span>
+          <h3>Primero, tu razonamiento</h3><p>{!literature.enabled ? "El piloto no está habilitado en este servidor." : !literature.covered ? "Este tema aún no tiene bibliografía habilitada. El piloto está disponible en el reactivo 034." : answered ? "Tu respuesta inicial está guardada. Puedes iniciar el análisis o reintentarlo más tarde si el proveedor no respondió." : "Guarda tu respuesta inicial para iniciar el análisis de Literatura."}</p>
+          {answered && literature.enabled && literature.covered ? <button className={a.button} type="button" disabled={busy || literature.sending} onClick={() => {
+            if (literature.pending && !window.confirm("La consulta anterior pudo haberse procesado. Reintentar usará otra consulta del límite del piloto. ¿Continuar?")) return;
+            void literature.send("",true,literature.retryable);
+          }}>{literature.retryable ? "Reintentar análisis" : "Analizar respuesta guardada"}</button> : null}</div> : null}
+        {literature.sending ? <p role="status" className={s.tutorStatus}>Consultando el fragmento de Malamed… Tu respuesta ya está guardada.</p> : null}
+        {literature.error ? <p role="alert" className={s.tutorError}>{literature.error}</p> : null}
+        {literature.pending ? <p className={s.tutorError}>Hay una consulta sin cierre verificable. No se repetirá automáticamente.</p> : null}
+        <button type="button" className={s.historyRefresh} disabled={literature.sending || literature.loading} onClick={() => void literature.refresh()}>Actualizar historial</button>
+      </> : <div className={s.chatWelcome}><span className={s.welcomeIcon}><AppIcon name="book" size={34} /></span>
+        <h3>{current.full}</h3><p>{current.empty}</p><p className={s.chatEmpty}>Pendiente de conexión. No se generarán respuestas simuladas.</p></div>}
+      {preview && draft.trim() ? <aside className={s.questionPreview} aria-label="Vista previa de tu pregunta"><div className={s.previewHeading}><strong>Tu pregunta · vista previa</strong><button type="button" aria-label="Cerrar vista previa" onClick={() => setPreview(false)}>×</button></div><TutorRichText text={draft} /></aside> : null}
     </div>
     <form ref={composer} className={s.composer} onSubmit={submit}>
       <label className={s.srOnly} htmlFor="tutor-question">Tu pregunta al tutor</label>
-      <textarea className={s.chatInput} id="tutor-question" rows={2} value={draft} maxLength={4000} disabled={busy || pending}
-        aria-describedby="tutor-connection-hint" placeholder="Tu pregunta…"
+      <textarea className={s.chatInput} id="tutor-question" rows={2} value={draft} maxLength={4000} disabled={busy || pending || literature.sending}
+        aria-describedby="tutor-connection-hint" placeholder="Haz una pregunta o pide otra perspectiva…"
         onChange={event => onDraft(view, event.target.value)} />
       <div className={s.composerTools}>
         <button ref={menuButton} type="button" className={s.commandToggle} aria-expanded={menuOpen} aria-controls="study-commands"
           onClick={() => setMenuOpen(open => !open)}>/ Comandos</button>
-        <button type="submit" className={s.sendButton} disabled={busy || pending || !canExecute}
-          aria-label={tutorCommand ? "Preparar solicitud" : command ? "Ejecutar comando" : "Enviar al tutor"} title={tutorCommand ? "Preparar solicitud" : command ? "Ejecutar comando" : "Envío pendiente de conexión"}>
+        <div className={s.quickCommands}>{tutorCommands.map(item => <button type="button" key={item.command} disabled={busy || pending} title={item.label} onClick={() => prepare(item.command)}>{item.command}</button>)}
+          <button type="button" disabled={busy || pending} title="Ir a Mis notas sin perder tu pregunta" onClick={() => void run("/apuntes")}>/apuntes</button></div>
+        <div className={s.composerSendTools}>
+        <button type="button" className={s.previewToggle} aria-label="Vista previa de tu pregunta" title="Vista previa: tablas y fórmulas" aria-pressed={preview} disabled={!draft.trim()} onClick={() => setPreview(old => !old)}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+        </button>
+        <button type="submit" className={s.sendButton} disabled={busy || pending || literature.sending || !canExecute}
+          aria-label={tutorCommand ? "Preparar solicitud" : command ? "Ejecutar comando" : "Enviar al tutor"} title={tutorCommand ? "Preparar solicitud" : command ? "Ejecutar comando" : "Enviar al tutor"}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20V4m-6 6 6-6 6 6" /></svg>
         </button>
+        </div>
       </div>
-      <p id="tutor-connection-hint" className={s.srOnly}>El envío de preguntas está pendiente de conexión. Puedes guardar un borrador en esta pantalla o ejecutar un comando de estudio.</p>
+      <p id="tutor-connection-hint" className={s.srOnly}>Literatura admite Markdown, tablas y fórmulas. Primero guarda tu respuesta. Piloto limitado al reactivo 034; segunda opinión y comparación aún sin conexión.</p>
       {menuOpen ? <div className={s.commandPopover} id="study-commands" role="group" aria-label="Comandos de estudio">
         {tutorCommands.map(item => <button type="button" key={item.command} disabled={busy || pending}
           aria-label={item.label} onClick={() => prepare(item.command)}><span>{item.label}</span><code>{item.command}</code></button>)}

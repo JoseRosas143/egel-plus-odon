@@ -1,0 +1,410 @@
+[
+  {
+    "id": "BIB-001",
+    "title": "Endodoncia. Técnicas clínicas y bases científicas",
+    "authors": [
+      "Carlos Canalda Sahli",
+      "Esteban Brau Aguadé"
+    ],
+    "edition": "3",
+    "year": 2014,
+    "pages": 462,
+    "area": "Endodoncia",
+    "kind": "Libro",
+    "listMatch": true,
+    "comparison": "Coinciden autores, tercera edición y 2014.",
+    "filename": "(2014). Endodoncia, técnicas clínicas y bases científicas 3°.pdf",
+    "sha256": "7401a4d346509fdc456a520434fd059a778ceb5879a78b7b51132d30575b0157",
+    "bytes": 15413984
+  },
+  {
+    "id": "BIB-002",
+    "title": "Manual de anestesia local",
+    "authors": [
+      "Stanley F. Malamed"
+    ],
+    "edition": "5",
+    "year": 2006,
+    "pages": 350,
+    "area": "Anestesia",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "La lista pide 6.ª/2013; el ejemplar es 5.ª/2006.",
+    "filename": "Anestesia - Malamed.pdf",
+    "sha256": "462b41b5e50ad28056d2f726251a900592372d8b1934c84447ecae08866d35f2",
+    "bytes": 73782414
+  },
+  {
+    "id": "BIB-003",
+    "title": "Barrancos Mooney. Operatoria dental: avances clínicos, restauraciones y estética",
+    "authors": [
+      "Patricio J. Barrancos"
+    ],
+    "edition": "5",
+    "year": 2015,
+    "pages": 757,
+    "area": "Operatoria",
+    "kind": "Libro",
+    "listMatch": true,
+    "comparison": "Coincide con el registro del área 3: Avances clínicos, restauraciones y estética, 5.ª/2015.",
+    "filename": "Barrancos Money Operatoria 5ta Edicion_compressed.pdf",
+    "sha256": "47cd024f41d4cdf317f6b7b4867176c22f3368f18ed91f890eb1fa30944ba60d",
+    "bytes": 44712784
+  },
+  {
+    "id": "BIB-004",
+    "title": "Diagnóstico de caries dental",
+    "authors": [
+      "Gilberto Henostroza Haro"
+    ],
+    "edition": null,
+    "year": null,
+    "pages": 108,
+    "area": "Operatoria",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Henostroza no aparece como referencia en las páginas 15 a 19.",
+    "filename": "Caries Dental - Henostroza.pdf",
+    "sha256": "0a421c00dd5f4745b0d7394ebcffe8c53840a4113e91ba1d9fca0af734e6100b",
+    "bytes": 14236450
+  },
+  {
+    "id": "BIB-005",
+    "title": "Control de infecciones y bioseguridad en odontología",
+    "authors": [
+      "Ana María Garza Garza"
+    ],
+    "edition": "2",
+    "year": 2016,
+    "pages": 467,
+    "area": "Prevención",
+    "kind": "Libro",
+    "listMatch": true,
+    "comparison": "Coinciden Garza, título, 2.ª edición y 2016.",
+    "filename": "Control de infecciones y bioseguridad en odontología.pdf",
+    "sha256": "0b3395509dc1dfaf92c504c34a7e8d9cf0a73af450c88d3212c77ed0587a5a9c",
+    "bytes": 11466180
+  },
+  {
+    "id": "BIB-006",
+    "title": "Diagnóstico Perio (nombre del archivo; tablas de diagnóstico periodontal)",
+    "authors": [
+      "Alejandra Cabrera Coria"
+    ],
+    "edition": null,
+    "year": null,
+    "pages": 7,
+    "area": "Periodoncia",
+    "kind": "Documento",
+    "listMatch": false,
+    "comparison": "Las tablas de Alejandra Cabrera Coria no aparecen en la lista. La entrada Cabrera sobre preeclampsia es otra referencia.",
+    "filename": "Diagnóstico Perio.pdf",
+    "sha256": "768c7ae90f7e43889905bf766a23df3e10767599558efd1751be10f018ac1222",
+    "bytes": 1730850
+  },
+  {
+    "id": "BIB-007",
+    "title": "Limpieza y desinfección de espacios comunitarios durante la pandemia por SARS-CoV-2",
+    "authors": [
+      "Gobierno de México"
+    ],
+    "edition": "Versión: 11 de junio",
+    "year": null,
+    "pages": 13,
+    "area": "Prevención",
+    "kind": "Documento",
+    "listMatch": true,
+    "comparison": "Coinciden institución, título y versión 11 de junio. La lista aporta el año 2020; este no se transcribe como observado en el ejemplar.",
+    "filename": "Limpieza desinfeccion espacios comunitarios durante pandemia SARS CoV-2.pdf",
+    "sha256": "51302ac00636fe211311747fc4442132396d9f74648120d636b96a5304c2ef1b",
+    "bytes": 3511223
+  },
+  {
+    "id": "BIB-008",
+    "title": "Lista N: Productos con declaraciones de patógenos virales emergentes y coronavirus humano para usar contra SARS-CoV-2",
+    "authors": [
+      "EPA"
+    ],
+    "edition": "Fecha de acceso: 2020-05-15",
+    "year": 2020,
+    "pages": 41,
+    "area": "Prevención",
+    "kind": "Documento",
+    "listMatch": false,
+    "comparison": "Misma Lista N; la copia tiene fecha de acceso 15/05/2020 y 41 páginas. La URL de la referencia alude a otra instantánea de marzo/abril de 2020.",
+    "filename": "Lista N Productos SARS-Cov-2.pdf",
+    "sha256": "fa1ed1fad205b1cf64216301d3ae5321583ded0b02b0962738530c6a3ea0bc80",
+    "bytes": 650367
+  },
+  {
+    "id": "BIB-009",
+    "title": "Manual para la prevención y control de infecciones y riesgos profesionales en la práctica estomatológica en la República Mexicana",
+    "authors": [
+      "Secretaría de Salud"
+    ],
+    "edition": null,
+    "year": null,
+    "pages": 83,
+    "area": "Prevención",
+    "kind": "Documento",
+    "listMatch": false,
+    "comparison": "Coinciden título e institución. La lista dice 2003; el PDF se presenta en apoyo a la NOM-013-SSA2-2006. Año del ejemplar no identificado.",
+    "filename": "Manual de prevención y control.pdf",
+    "sha256": "4087f6ae75ec4712501131482fa502d28502ef60576e9c2f9200c668d6290c6f",
+    "bytes": 1930222
+  },
+  {
+    "id": "BIB-010",
+    "title": "NOM-013-SSA2-2015, para la prevención y control de enfermedades bucales",
+    "authors": [],
+    "edition": "NOM-013-SSA2-2015",
+    "year": null,
+    "pages": 33,
+    "area": "Prevención",
+    "kind": "Documento",
+    "listMatch": true,
+    "comparison": "Coinciden identificador NOM-013-SSA2-2015 y título. La lista cita publicación en 2016.",
+    "filename": "NORMA OFICIAL 013-2015.pdf",
+    "sha256": "780e47c382a29df329a970afb4ee408a0de77a5e8d45276b98b479749e102bae",
+    "bytes": 450245
+  },
+  {
+    "id": "BIB-011",
+    "title": "Newman and Carranza’s Clinical Periodontology",
+    "authors": [
+      "Michael G. Newman",
+      "Henry H. Takei",
+      "Perry R. Klokkevold",
+      "Fermin A. Carranza"
+    ],
+    "edition": "13",
+    "year": 2019,
+    "pages": 1991,
+    "area": "Periodoncia",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Coinciden obra, autores y 13.ª edición en inglés; la lista dice 2018 y la página legal del ejemplar 2019.",
+    "filename": "Newman13_and_Carranza_s_Clinical_Periodontology_13th_PDFDrive_compressed.pdf",
+    "sha256": "7d6b24910d7805c4e08d875564f432267fd5fa377eb32ce0692e2f1b5cd62e87",
+    "bytes": 78807422
+  },
+  {
+    "id": "BIB-012",
+    "title": "Medicina en odontología: manejo dental de pacientes con enfermedades sistémicas",
+    "authors": [
+      "José Luis Castellanos Suárez",
+      "Laura María Díaz Guzmán",
+      "Enrique Armando Lee Gómez"
+    ],
+    "edition": "3",
+    "year": 2015,
+    "pages": 672,
+    "area": "Medicina oral",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Coinciden autores, título y 3.ª edición; lista 2020 frente a copyright 2015 del PDF.",
+    "filename": "ODONTOLOGÍA.pdf",
+    "sha256": "8476e38905034cad7f825c771260b5bad71a28a449b4c13dd5e15cf1c3a9220a",
+    "bytes": 35220270
+  },
+  {
+    "id": "BIB-013",
+    "title": "Tratamiento de oclusión y afecciones temporomandibulares / Manejo de los trastornos temporomandibulares y la oclusión",
+    "authors": [
+      "Jeffrey P. Okeson"
+    ],
+    "edition": "8",
+    "year": 2020,
+    "pages": 514,
+    "area": "Oclusión",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Coinciden autor y número de edición 8. La lista dice 2019; el PDF 2020 y presenta variantes del título, con ISBN 978-0-323-58210-0.",
+    "filename": "Oclusión Okeson  8va.pdf",
+    "sha256": "b3e958213ac284aa00a970e60410c69d7276948bbeba0e56626cd8b8739cdbd0",
+    "bytes": 36112217
+  },
+  {
+    "id": "BIB-014",
+    "title": "Odontología preventiva",
+    "authors": [
+      "Bertha Yoshiko Higashida Hirose"
+    ],
+    "edition": "2",
+    "year": 2009,
+    "pages": 316,
+    "area": "Prevención",
+    "kind": "Libro",
+    "listMatch": true,
+    "comparison": "Coinciden Higashida, título, segunda edición y 2009.",
+    "filename": "Odontologia Preventiva Higashida (1).pdf",
+    "sha256": "61bad93e88ce8bd8bebb12254623989fc347b5a2794378e1de3be4837aea43fe",
+    "bytes": 8621703
+  },
+  {
+    "id": "BIB-015",
+    "title": "Orthodontics: Current Principles and Techniques",
+    "authors": [
+      "Lee W. Graber",
+      "Robert L. Vanarsdall Jr.",
+      "Katherine W. L. Vig",
+      "Greg J. Huang"
+    ],
+    "edition": "6",
+    "year": 2017,
+    "pages": 1209,
+    "area": "Ortodoncia",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Coinciden autores, sexta edición y 2017. Se aportó Orthodontics en inglés; la referencia está titulada en español.",
+    "filename": "Ortodoncia de Graber 6ta ed.pdf",
+    "sha256": "ddb6362444050060670cc121566b9b3f9bafb2e4b56f15e6597097ddbd9def51",
+    "bytes": 115515888
+  },
+  {
+    "id": "BIB-016",
+    "title": "Clinical Oral Medicine and Pathology",
+    "authors": [
+      "Jean M. Bruch",
+      "Nathaniel S. Treister"
+    ],
+    "edition": null,
+    "year": 2010,
+    "pages": 176,
+    "area": "Patología",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Bruch y Treister no aparecen en las cinco páginas de bibliografía aportadas.",
+    "filename": "Patología Bucal - Bruch (Ingles).pdf",
+    "sha256": "1ac64ef08d38f2e2a6eb8a87865c10fc37eefdd4478ea6b9847e5c9e3005b3bc",
+    "bytes": 22789093
+  },
+  {
+    "id": "BIB-017",
+    "title": "Patología oral y maxilofacial contemporánea",
+    "authors": [
+      "J. Philip Sapp",
+      "Lewis R. Eversole",
+      "George P. Wysocki"
+    ],
+    "edition": "2",
+    "year": null,
+    "pages": 395,
+    "area": "Patología",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Sapp, Eversole y Wysocki no aparecen en estas cinco páginas.",
+    "filename": "Philips Patologia oral y maxilofacial contemporanea_booksmedicos.org (5).pdf",
+    "sha256": "568d713680d16267da74cd34648d2d137d59f3709c7271d68a6066cbb3c580b4",
+    "bytes": 49698462
+  },
+  {
+    "id": "BIB-018",
+    "title": "Prótesis fija contemporánea",
+    "authors": [
+      "Rosenstiel",
+      "Land",
+      "Fujimoto"
+    ],
+    "edition": "4",
+    "year": null,
+    "pages": 879,
+    "area": "Prótesis",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "La lista pide 5.ª/2016; la portada del ejemplar dice cuarta edición.",
+    "filename": "Protesis Fija Contemporanea. Rosenstiel.pdf",
+    "sha256": "d630c67353dcb21b0a08f0cad069066a2e209db1e49ff3cbc8d6049ad4be4b8e",
+    "bytes": 54364892
+  },
+  {
+    "id": "BIB-019",
+    "title": "Robbins y Cotran. Patología estructural y funcional",
+    "authors": [
+      "Vinay Kumar",
+      "Abul K. Abbas",
+      "Nelson Fausto",
+      "Jon C. Aster"
+    ],
+    "edition": "8",
+    "year": 2010,
+    "pages": 1462,
+    "area": "Patología",
+    "kind": "Libro",
+    "listMatch": true,
+    "comparison": "Coinciden autores, título, octava edición y 2010.",
+    "filename": "Robbins.Cotran.Patologia.Estructural.y.Funcional.8ª.Edicion-comprimido (1).pdf",
+    "sha256": "320ea78320bf472b6ce775b13e575660b0f9c13e3e0483b642e6a28c9c05d6b7",
+    "bytes": 88605657
+  },
+  {
+    "id": "BIB-020",
+    "title": "Langman. Embriología médica",
+    "authors": [
+      "T. W. Sadler"
+    ],
+    "edition": "14",
+    "year": 2019,
+    "pages": 679,
+    "area": "Embriología",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "La lista pide 12.ª/2012; se aportó 14.ª/2019.",
+    "filename": "Sadler (2019) Langman Embriologia Medica 14ed.pdf",
+    "sha256": "27bb77276e84b3011a1ff63ba34740c93f25a42f2ae338ad21b12040b8e737ac",
+    "bytes": 38339199
+  },
+  {
+    "id": "BIB-021",
+    "title": "Urgencias médicas en odontología",
+    "authors": [
+      "Pedro Gutiérrez Lizardi",
+      "Héctor Abraham Gutiérrez Jiménez"
+    ],
+    "edition": "2",
+    "year": 2012,
+    "pages": 553,
+    "area": "Urgencias",
+    "kind": "Libro",
+    "listMatch": true,
+    "comparison": "Coinciden Gutiérrez, título, segunda edición y 2012.",
+    "filename": "Urgencias Medicas en Odontologia de Gutierrez (1).pdf",
+    "sha256": "5b17e8096878acf563d49fef7dc149c68d109c0d4f9c4bce555a49565e299aec",
+    "bytes": 15150334
+  },
+  {
+    "id": "BIB-022",
+    "title": "Cohen. Vías de la pulpa",
+    "authors": [
+      "Kenneth M. Hargreaves",
+      "Stephen Cohen"
+    ],
+    "edition": "10",
+    "year": 2011,
+    "pages": 1081,
+    "area": "Endodoncia",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "Cohen/Hargreaves, Vías de la pulpa, no aparece en las cinco páginas aportadas.",
+    "filename": "VIAS DE LA PULPA DE COHEN Y HARGREAVES 10ma EDICION.pdf",
+    "sha256": "ca56644bea8bb354f08e038c9ffcaaccb8ef040ec8e1c7f8dbedd544780e5688",
+    "bytes": 87754858
+  },
+  {
+    "id": "BIB-023",
+    "title": "Propedéutica y semiología en odontología",
+    "authors": [
+      "Norma Guadalupe Ibáñez Mancera"
+    ],
+    "edition": null,
+    "year": 2015,
+    "pages": 279,
+    "area": "Medicina oral",
+    "kind": "Libro",
+    "listMatch": false,
+    "comparison": "La lista pide 2.ª/2021. El ejemplar aportado declara 2015, sin número de edición confirmado.",
+    "filename": "propedeutica-y-semiologia-en-odontologia-8490228620-9788490228623_compress.pdf",
+    "sha256": "fe8080ffd0308b6bf7ffc828c6a82a67533afdac346c0d214582a3847e9c1229",
+    "bytes": 64573520
+  }
+]

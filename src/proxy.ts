@@ -14,6 +14,8 @@ export const config = {
     "/auth/:path*",
     "/estudio/:path*",
     "/cuenta/:path*",
+    "/biblioteca/:path*",
+    "/api/biblioteca/:path*",
     "/api/estudiante/:path*",
   ],
 };

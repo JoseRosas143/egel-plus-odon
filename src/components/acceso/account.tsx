@@ -9,6 +9,7 @@ import { DashboardCards, DashboardIcon } from "./dashboard-cards";
 import { AccessShell } from "./shell";
 import styles from "./styles.module.css";
 import dashboard from "./dashboard.module.css";
+import { StudentNav } from "./student-nav";
 
 async function updateResource<T>(path: string, body: unknown, resource: "profile" | "preferences"): Promise<{ ok: true; value: T } | { ok: false; message: string }> {
   try {
@@ -114,7 +115,7 @@ export function StudentAccount({ profile, preferences, stats, initialNow }: {
     } catch { notify("No se pudo confirmar el cierre. Intenta de nuevo.", "error"); }
     finally { setLeaving(false); }
   }
-  return <AccessShell wide action={<nav className={`${styles.accountNav} ${dashboard.navigation}`} aria-label="Mi cuenta"><a href="/estudio">Estudio</a><a href="/mis-apuntes">Mis apuntes</a><button type="button" className={`${styles.button} ${styles.secondary}`} onClick={logout} disabled={leaving}>{leaving ? "Cerrando..." : "Cerrar sesi\u00f3n"}</button></nav>}>
+  return <AccessShell wide action={<StudentNav current="inicio"><button type="button" className={`${styles.button} ${styles.secondary}`} onClick={logout} disabled={leaving}>{leaving ? "Cerrando..." : "Salir"}</button></StudentNav>}>
     <h1 className={styles.title}>Hola, {currentProfile.display_name}</h1>
     <p className={dashboard.subtitle}>Tu espacio para avanzar, un reactivo a la vez.</p>
     <section className={styles.studyEntry} aria-label="Continuar estudiando"><a className={styles.button} href="/estudio">Continuar estudiando</a><p>Retoma el último reactivo y tus notas.</p><a className={styles.link} href="/mis-apuntes">Ver mis apuntes</a></section>

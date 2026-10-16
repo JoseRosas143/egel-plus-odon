@@ -2,6 +2,8 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AccessShell } from "@/components/acceso/shell";
+import { StudentNav } from "@/components/acceso/student-nav";
+import { AppIcon } from "@/components/acceso/app-icon";
 import a from "@/components/acceso/styles.module.css";
 import s from "./styles.module.css";
 import { blankNote, addHighlight } from "@/lib/estudio/domain";
@@ -11,6 +13,7 @@ import { ResizablePanels, type StudyPanel } from "./resizable-panels";
 import { TutorPanel, emptyChatDrafts, type StudyCommand, type TutorView } from "./tutor-panel";
 import { StudyToast, type ToastMessage } from "./study-toast";
 import { prepareTutorRequest, type TutorCommand } from "@/lib/estudio/tutor-commands";
+import { useLiterature } from "./use-literature";
 
 type Loaded = { ok: true; total: number; can_import: boolean; question: Question | null; note: Note | null; last_answer: Attempt | null };
 const panels = [{ key: "reactivo", label: "Reactivo" }, { key: "tutor", label: "Tutor IA" }, { key: "notas", label: "Mis notas" }] as const;
@@ -42,6 +45,7 @@ export function StudyWorkspace() {
   const [dirty, setDirty] = useState(false);
   const [panel, setPanel] = useState<StudyPanel>("reactivo");
   const [chatDrafts, setChatDrafts] = useState(emptyChatDrafts);
+  const [tutorView, setTutorView] = useState<TutorView>("base");
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const toastSequence = useRef(0);
   const [number, setNumber] = useState("1");
@@ -50,10 +54,11 @@ export function StudyWorkspace() {
   const running = useRef(false);
   const selectionContext = useRef<{ questionId: string; version: number; text: string } | null>(null);
   const q = model?.question;
+  const literature = useLiterature(q);
   const questionId = q?.id, questionVersion = q?.version;
   const total = model?.total ?? 0;
   const lastAnswer = model?.last_answer;
-  const unsaved = dirty || selected !== (lastAnswer?.selected_answer ?? null) || Object.values(chatDrafts).some(value => value.trim().length > 0);
+  const unsaved = literature.sending || dirty || selected !== (lastAnswer?.selected_answer ?? null) || Object.values(chatDrafts).some(value => value.trim().length > 0);
 
   const dismissToast = useCallback(() => setToast(null), []);
   const notify = useCallback((text: string, tone: ToastMessage["tone"] = "info", action?: ToastMessage["action"]) => {
@@ -76,6 +81,7 @@ export function StudyWorkspace() {
     setNumber(String(data.question?.position ?? 1));
     setDirty(false);
     setChatDrafts(emptyChatDrafts());
+    setTutorView("base");
   }, []);
   const change = useCallback(<K extends keyof NoteFields,>(key: K, value: NoteFields[K]) => {
     setFields(old => ({ ...old, [key]: value }));
@@ -163,6 +169,7 @@ export function StudyWorkspace() {
   }, [highlight]);
 
   function confirmLeave(command?: StudyCommand) {
+    if (literature.sending) { notify("Espera a que termine la consulta de Literatura antes de cambiar de pantalla."); return false; }
     const pendingChat = Object.values(chatDrafts).some(value => value.trim().length > 0 && value.trim().toLowerCase() !== command);
     const pending = dirty || selected !== (lastAnswer?.selected_answer ?? null) || pendingChat;
     return !pending || window.confirm("Hay apuntes, una respuesta o una pregunta pendientes. Cambiar de pantalla descartará los cambios sin guardar. ¿Continuar?");
@@ -206,6 +213,10 @@ export function StudyWorkspace() {
       });
       setModel({ ...model, last_answer: result.attempt });
       notify("Respuesta guardada. Sin calificar.", "success");
+      setPanel("tutor");
+      setTutorView("base");
+      // Only after the server confirms the saved answer, never on selection/render.
+      void literature.send("", true);
     } catch (e) { showError(e); }
     finally { running.current = false; setBusy(false); }
   }
@@ -215,7 +226,7 @@ export function StudyWorkspace() {
     const remembered = selectionContext.current;
     const selection = remembered?.questionId === q.id && remembered.version === q.version ? remembered.text : "";
     if (command === "/investigar" && !selection) {
-      notify("Selecciona texto de una respuesta del tutor. Podrás investigarlo cuando haya respuestas del servicio conectado.");
+      notify("Selecciona texto de una respuesta del tutor, no del enunciado, y pulsa Investigar selección.");
       return false;
     }
     try {
@@ -223,7 +234,7 @@ export function StudyWorkspace() {
       setChatDrafts(old => ({ ...old, [view]: request }));
       setPanel("tutor");
       requestAnimationFrame(() => document.getElementById("tutor-question")?.focus());
-      notify("Solicitud preparada. El tutor sigue sin conexión.");
+      notify(view === "base" ? "Solicitud preparada. Revísala y pulsa Enviar cuando quieras consultarla." : "Solicitud preparada como borrador. Esta vista todavía está pendiente de conexión.");
       return true;
     } catch (e) { notify(errorText(e)); return false; }
   }
@@ -261,10 +272,7 @@ export function StudyWorkspace() {
     });
     pieces.push(<Fragment key="tail">{q.stem.slice(pos)}</Fragment>);
   }
-  const nav = <nav className={s.nav} aria-label="Estudio">
-    <a href="/mis-apuntes" onClick={event => { if (!confirmLeave()) event.preventDefault(); }}>Mis apuntes</a>
-    <a href="/cuenta" onClick={event => { if (!confirmLeave()) event.preventDefault(); }}>Mi cuenta</a>
-  </nav>;
+  const nav = <StudentNav current="estudio" onLeave={confirmLeave} />;
 
   return <AccessShell wide study action={nav}>
     <h1 className={s.srOnly}>Espacio de estudio</h1>
@@ -273,16 +281,6 @@ export function StudyWorkspace() {
     {!loading && !model ? <button className={a.button} type="button" onClick={() => void go()}>Volver a intentar</button> : null}
     {model && total === 0 ? <p className={a.notice}>Todavía no hay reactivos disponibles. La carga inicial del banco se administra fuera del área de estudio.</p> : null}
     {q ? <>
-      <div className={[s.toolbar, panel !== "reactivo" ? s.mobileToolbarHidden : ""].join(" ")}>
-        <button type="button" className={[a.button, a.secondary, s.iconButton].join(" ")} disabled={busy || q.position <= 1} aria-label="Reactivo anterior" title="Anterior" onClick={() => void go(q.position - 1)}><NavigationIcon name="previous" /></button>
-        <button type="button" className={[a.button, s.iconButton].join(" ")} disabled={busy || q.position >= total} aria-label="Siguiente reactivo" title="Siguiente" onClick={() => void go(q.position + 1)}><NavigationIcon name="next" /></button>
-        <button type="button" className={[a.button, a.secondary, s.iconButton].join(" ")} disabled={busy} aria-label="Reactivo aleatorio" title="Aleatorio" onClick={() => void go(total > 1 ? ((q.position + Math.floor(Math.random() * (total - 1))) % total) + 1 : q.position)}><NavigationIcon name="shuffle" /></button>
-        <form className={s.jump} onSubmit={event => { event.preventDefault(); void go(Number(number)); }}>
-          <label htmlFor="question-number">Reactivo</label>
-          <input className={a.input} type="number" id="question-number" min={1} max={total} value={number} disabled={busy} onChange={event => setNumber(event.target.value)} />
-          <button className={[a.button, a.secondary].join(" ")} disabled={busy}>Ir</button>
-        </form>
-      </div>
       <div className={s.mobileTabs} role="tablist" aria-label="Paneles de estudio">
         {panels.map((item, index) => <button type="button" role="tab" id={"panel-tab-" + item.key} key={item.key}
           aria-selected={panel === item.key} aria-controls={"study-" + item.key} tabIndex={panel === item.key ? 0 : -1}
@@ -292,18 +290,16 @@ export function StudyWorkspace() {
         reactivo={<>
           <div className={s.panelHeading}>
             <h2 className={a.sectionTitle}>Reactivo {String(q.position).padStart(3, "0")} <span className={s.counter}>/ {total}</span></h2>
+            <div className={s.headingTools}><button className={s.bookmarkButton} type="button" aria-label="Marcar reactivo como favorito" aria-pressed={fields.favorite} disabled={busy} onClick={() => change("favorite", !fields.favorite)}><AppIcon name="bookmark" size={18} /></button>
             <details className={s.questionInfo}><summary aria-label="Información del reactivo" title="Información del reactivo"><NavigationIcon name="info" /></summary>
               <div className={s.infoPopover}><p>Fuente {q.source_number} · PDF {q.source_pages.join(", ")} · v{q.version}</p>
                 <p>Práctica sin calificación. La clave oficial y el tutor todavía no están habilitados.</p>
                 <p>Preparación independiente, sin afiliación a CENEVAL.</p>
                 {q.review_flags.length > 0 ? <p>Incidencia editorial pendiente; se conserva el texto extraído.</p> : null}</div>
-            </details>
+            </details></div>
           </div>
+          <div className={s.questionBody}>
           <p ref={statement} className={s.statement}>{pieces}</p>
-          <button type="button" className={[a.button, a.secondary, s.highlightButton].join(" ")} disabled={busy}
-            onMouseDown={event => event.preventDefault()} onClick={highlight}>
-            <span>Resaltar selección</span><small>(haz clic o presiona R)</small>
-          </button>
           <fieldset className={s.options} disabled={busy}>
             <legend className={s.srOnly}>Tu respuesta inicial</legend>
             {q.options.map(option => <label key={option.id} className={s.answer}>
@@ -311,13 +307,31 @@ export function StudyWorkspace() {
               <span><strong>{option.letter}.</strong> {option.text}</span>
             </label>)}
           </fieldset>
-          <div className={s.row}><button type="button" className={a.button} disabled={busy || !selected} onClick={() => void answer()}>Guardar respuesta</button></div>
+          <div className={s.row}><button type="button" className={[a.button, a.secondary].join(" ")} disabled={busy || !selected} onClick={() => void answer()}><AppIcon name="save" size={16} />Guardar respuesta</button></div>
+          </div>
+          <div className={s.questionFooter}>
+            <div className={s.questionUtilities}><button type="button" className={[a.button, a.secondary, s.highlightButton].join(" ")} disabled={busy}
+              onMouseDown={event => event.preventDefault()} onClick={highlight}><AppIcon name="pencil" size={18} /><span>Resaltar selección<small>(haz clic o presiona R)</small></span></button>
+              <details className={s.jumpMenu}><summary title="Ir a otro reactivo">Ir a…</summary><div className={s.jumpPopover}>
+                <form className={s.jump} onSubmit={event => { event.preventDefault(); void go(Number(number)); }}>
+                  <label htmlFor="question-number">Reactivo</label><input className={a.input} type="number" id="question-number" min={1} max={total} value={number} disabled={busy} onChange={event => setNumber(event.target.value)} />
+                  <button className={[a.button, a.secondary].join(" ")} disabled={busy}>Ir</button></form>
+                <button type="button" className={[a.button, a.secondary].join(" ")} disabled={busy} aria-label="Reactivo aleatorio" onClick={() => void go(total > 1 ? ((q.position + Math.floor(Math.random() * (total - 1))) % total) + 1 : q.position)}><NavigationIcon name="shuffle" />Aleatorio</button>
+              </div></details>
+            </div>
+            <div className={s.questionPagination}><button type="button" className={[a.button, a.secondary].join(" ")} disabled={busy || q.position <= 1} aria-label="Reactivo anterior" onClick={() => void go(q.position - 1)}><NavigationIcon name="previous" />Anterior</button>
+              <button type="button" className={a.button} disabled={busy || q.position >= total} aria-label="Siguiente reactivo" onClick={() => void go(q.position + 1)}>Siguiente<NavigationIcon name="next" /></button></div>
+          </div>
         </>}
-        tutor={<TutorPanel position={q.position} busy={busy} drafts={chatDrafts} onDraft={updateDraft} onCommand={runCommand} onPrepare={prepareCommand} onNotice={notify} />}
+        tutor={<TutorPanel position={q.position} busy={busy} drafts={chatDrafts} onDraft={updateDraft} onCommand={runCommand} onPrepare={prepareCommand} onNotice={notify} literature={literature} answered={!!lastAnswer} view={tutorView} onView={setTutorView} />}
         notas={<>
-          <div className={s.panelHeading}><h2 className={a.sectionTitle}>Mis notas</h2>
-            <span className={s.recordedChoice} title="Respuesta inicial registrada, sin calificación">Inicial: {lastAnswer?.selected_answer ?? "—"}</span></div>
+          <div className={s.panelHeading}><h2 className={a.sectionTitle}><AppIcon name="notes" />Mis notas</h2></div>
           <fieldset className={a.fields} disabled={busy}>
+            <div className={s.verdictSummary}>
+              <button type="button" className={s.initialChoice} title="Editar tu respuesta inicial. Sin calificación." onClick={() => { setPanel("reactivo"); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#study-reactivo input[type="radio"]:checked, #study-reactivo input[type="radio"]')?.focus()); }}>Inicial: <strong>{lastAnswer?.selected_answer ?? "—"}</strong><AppIcon name="pencil" size={15} /></button>
+              <label className={s.personalChoice}><span>Veredicto personal</span><select className={a.input} aria-label="Mi veredicto personal" value={fields.personal_verdict ?? ""} onChange={event => change("personal_verdict", event.target.value ? event.target.value as Letter : null)}>
+                <option value="">Sin decidir</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></label>
+            </div>
             <label className={a.field}><span className={a.label}>Apuntes generales</span>
               <textarea ref={notebook} className={s.area} value={fields.general_note} maxLength={10000} onChange={event => change("general_note", event.target.value)} /></label>
             <div className={s.grid}>{(["A", "B", "C"] as const).map(letter => {
@@ -326,15 +340,11 @@ export function StudyWorkspace() {
                 <span className={s.optionCaption}>{q.options.find(option => option.letter === letter)?.text ?? "Texto no disponible"}</span>
                 <textarea className={s.area} maxLength={5000} value={fields[key]} onChange={event => change(key, event.target.value)} /></label>;
             })}</div>
-            <label className={a.field}><span className={a.label} title="Tu conclusión personal; no es una clave oficial ni un veredicto de IA">Mi veredicto personal</span>
-              <select className={a.input} value={fields.personal_verdict ?? ""} onChange={event => change("personal_verdict", event.target.value ? event.target.value as Letter : null)}>
-                <option value="">Aún no lo decido</option><option value="A">Opción A</option><option value="B">Opción B</option><option value="C">Opción C</option>
-              </select></label>
             <label className={s.check}><input type="checkbox" checked={fields.favorite} onChange={event => change("favorite", event.target.checked)} />Marcar como favorito para repasar</label>
-            {fields.highlights.length > 0 ? <div><p className={a.label}>Fragmentos resaltados</p>
+            {fields.highlights.length > 0 ? <div className={s.highlightSummary}><p className={a.label}><AppIcon name="pencil" size={16} />Fragmentos resaltados del reactivo</p>
               {fields.highlights.map((h, i) => <div className={s.fragment} key={h.start + "-" + h.end}><span>{h.quote}</span>
                 <button type="button" onClick={() => change("highlights", fields.highlights.filter((_, j) => j !== i))}>Quitar</button></div>)}</div> : null}
-            <div className={s.saveBar}><button type="button" className={a.button} onClick={() => void save()}>{busy ? "Guardando..." : "Guardar apuntes"}</button>
+            <div className={s.saveBar}><button type="button" className={a.button} onClick={() => void save()}><AppIcon name="save" size={17} />{busy ? "Guardando..." : "Guardar apuntes"}</button>
               {dirty ? <span className={s.draftIndicator} role="status" aria-label="Cambios sin guardar" title="Cambios sin guardar" /> : null}</div>
           </fieldset>
         </>} />

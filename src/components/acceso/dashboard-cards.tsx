@@ -46,7 +46,7 @@ export function DashboardCards({ stats, preferences, timezone, initialNow, onEdi
   }, []);
   const exam = examCountdown(preferences.exam_date, timezone, new Date(now));
   const incomplete = Object.values(stats).some(value => value === null);
-  return <section className={s.dashboard} aria-labelledby="dashboard-heading">
+  return <section id="mi-progreso" className={s.dashboard} aria-labelledby="dashboard-heading">
     <h2 id="dashboard-heading">Tu avance</h2>
     <div className={s.primaryGrid}>
       <article className={`${s.card} ${s.exam}`} aria-label="Tu próximo examen">
