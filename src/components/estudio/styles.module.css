@@ -1,0 +1,39 @@
+/* Extends the existing black/white AccessShell. No global CSS overrides. */
+.nav {display:flex;gap:20px;flex-wrap:wrap;align-items:center;font-size:14px;}
+.nav a{color:#171717;text-underline-offset:4px;font-weight:600;}
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:24px 0;}
+.toolbar input{max-width:90px;}
+.toolbar label{font-size:14px;}
+.meta{font-size:13px;color:#626262;margin:10px 0 20px;}
+.statement{font-size:17px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;margin:24px 0;}
+.statement mark{background:#fff0a6;color:#171717;border-bottom:2px solid #ab7900;}
+.answer{display:flex;align-items:flex-start;gap:12px;border:1px solid #bcbcbc;border-radius:7px;padding:15px;cursor:pointer;margin-bottom:10px;line-height:1.6;font-size:16px;}
+.answer input{margin-top:6px;accent-color:#171717;flex-shrink:0;}
+.answer:has(input:checked){border:2px solid #171717;padding:14px;background:#f7f7f7;}
+.options{border:0;padding:0;margin:0;min-width:0;}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+.row p{margin:0;}
+.notebook{border-top:1px solid #e5e5e5;padding-top:32px;margin-top:40px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.area{box-sizing:border-box;width:100%;min-height:110px;resize:vertical;border:1px solid #a3a3a3;border-radius:7px;padding:12px;background:#fff;color:#171717;font:inherit;font-size:16px;line-height:1.6;}
+.area:focus{outline:2px solid #171717;outline-offset:2px;}
+.list{padding:0;list-style:none;}
+.item{padding:22px 0;border-bottom:1px solid #e5e5e5;overflow-wrap:anywhere;}
+.item p{white-space:pre-wrap;}
+.item h2{font-size:20px;font-weight:650;margin-bottom:12px;}
+.item a{color:#171717;text-underline-offset:4px;font-weight:600;}
+.fragment{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:12px 0;padding:12px;background:#faf7e9;font-size:14px;}
+.fragment button{border:1px solid #aaa;border-radius:4px;padding:4px 8px;font-size:13px;background:white;color:#171717;cursor:pointer;}
+.check{display:flex;gap:10px;align-items:center;font-size:14px;}
+.check input{accent-color:#171717;}
+.dialog{position:fixed;inset:0;margin:auto;max-width:min(580px,calc(100vw - 32px));max-height:80svh;overflow:auto;padding:28px;border:1px solid #bcbcbc;border-radius:10px;color:#171717;background:#fff;box-shadow:0 15px 60px #0003;font-family:Arial,Helvetica,sans-serif;}
+.dialog::backdrop{background:#0006;}
+.dialog:not([open]){display:none;}
+.dialog h2{font-size:24px;font-weight:650;margin-bottom:20px;}
+.commands{display:grid;gap:8px;margin:20px 0;}
+.commands button{text-align:left;padding:12px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#171717;font-size:15px;cursor:pointer;}
+.commands code{display:inline-block;min-width:105px;font-weight:600;}
+.import{max-width:620px;margin:28px 0;}
+.import input{display:block;margin:20px 0;width:100%;font-size:15px;border:1px solid #aaa;padding:12px;border-radius:6px;}
+.toolbar button:disabled,.notebook button:disabled{opacity:.55;cursor:wait;}
+@media(max-width:680px){.grid{grid-template-columns:1fr;}.statement{font-size:16px;line-height:1.7}.nav{gap:12px}.toolbar{gap:8px}.dialog{padding:20px}.fragment{flex-direction:column}.toolbar button{padding:8px 12px;}}

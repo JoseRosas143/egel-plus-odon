@@ -1,0 +1,59 @@
+import { createClient } from "@/lib/supabase/server";
+import { BANK_ID, StudyError } from "./domain";
+import type { StudyAuth, StudyRepository, Question, Note, NoteListItem, Attempt } from "./domain";
+const qFields="id,bank_id,position,version,source_number,stem,options,source_pages,review_flags,evidence_eligible,scoreable";
+const nFields="question_id,question_version,general_note,note_a,note_b,note_c,personal_verdict,favorite,highlights,revision,updated_at";
+function dbError(error: {code?:string}|null) {if(error)throw new StudyError("DATABASE_UNAVAILABLE",503);}
+export const authenticateStudy:StudyAuth=async()=>{
+ try{
+  const db=await createClient();const result=await db.auth.getUser();
+  if(result.error){const e=result.error;return {ok:false,code:e.name==="AuthSessionMissingError"||[400,401,403].includes(e.status??0)?"AUTH_REQUIRED":"AUTH_UNAVAILABLE",status:e.name==="AuthSessionMissingError"||[400,401,403].includes(e.status??0)?401:503};}
+  const user=result.data.user;if(!user||user.is_anonymous)return {ok:false,code:"AUTH_REQUIRED",status:401};
+  const uid=user.id;
+  const repository:StudyRepository={
+   async status(){
+    const [q,p,c]=await Promise.all([
+     db.from("questions").select("id",{head:true,count:"exact"}).eq("bank_id",BANK_ID),
+     db.from("study_positions").select("question_id").eq("user_id",uid).maybeSingle<{question_id:string}>(),
+     db.rpc("egel_can_import_bank"),
+    ]);dbError(q.error);dbError(p.error);dbError(c.error);
+    return {total:q.count??0,can_import:c.data===true,last_question_id:p.data?.question_id??null};
+   },
+   async question(id){const r=await db.from("questions").select(qFields).eq("bank_id",BANK_ID).eq("id",id).maybeSingle<Question>();dbError(r.error);return r.data;},
+   async note(q){const r=await db.from("study_notes").select(nFields).eq("user_id",uid).eq("question_id",q.id).eq("question_version",q.version).maybeSingle<Note>();dbError(r.error);return r.data;},
+   async lastAnswer(q){const r=await db.from("question_attempts").select("selected_answer,created_at").eq("user_id",uid).eq("question_id",q.id).eq("question_version",q.version).order("created_at",{ascending:false}).limit(1).maybeSingle<Attempt>();dbError(r.error);return r.data;},
+   async saveNote(q,fields,expected){
+    const query=expected===0?db.from("study_notes").insert({user_id:uid,question_id:q.id,question_version:q.version,...fields}):db.from("study_notes").update(fields).eq("user_id",uid).eq("question_id",q.id).eq("question_version",q.version).eq("revision",expected);
+    const r=await query.select(nFields).maybeSingle<Note>();
+    if(r.error?.code==="23505"||(!r.error&&!r.data))throw new StudyError("NOTE_CONFLICT",409);dbError(r.error);return r.data!;
+   },
+   async answer(q,selection,requestId){
+    const r=await db.from("question_attempts").insert({user_id:uid,request_id:requestId,question_id:q.id,question_version:q.version,selected_answer:selection}).select("selected_answer,created_at").maybeSingle<Attempt>();
+    if(r.error?.code==="23505"){
+     const old=await db.from("question_attempts").select("selected_answer,created_at,question_id,question_version").eq("user_id",uid).eq("request_id",requestId).maybeSingle<Attempt&{question_id:string;question_version:number}>();
+     dbError(old.error);if(!old.data||old.data.question_id!==q.id||old.data.question_version!==q.version||old.data.selected_answer!==selection)throw new StudyError("ATTEMPT_CONFLICT",409);
+     return {selected_answer:old.data.selected_answer,created_at:old.data.created_at};
+    }
+    dbError(r.error);if(!r.data)throw new StudyError("DATABASE_UNAVAILABLE",503);return r.data;
+   },
+   async remember(q){
+    const r=await db.from("study_positions").insert({user_id:uid,question_id:q.id,question_version:q.version});
+    if(r.error?.code==="23505") {const u=await db.from("study_positions").update({question_id:q.id,question_version:q.version}).eq("user_id",uid);dbError(u.error);}else dbError(r.error);
+   },
+   async notes(page){
+    const n=await db.from("study_notes").select(nFields,{count:"exact"}).eq("user_id",uid).order("updated_at",{ascending:false}).order("question_id").range(page*20,page*20+19).returns<Note[]>();dbError(n.error);
+    if(!n.data?.length)return {items:[],total:n.count??0};
+    const q=await db.from("questions").select("id,position,stem").in("id",n.data.map(x=>x.question_id)).returns<{id:string;position:number;stem:string}[]>();dbError(q.error);
+    const map=new Map(q.data?.map(x=>[x.id,x]));const items:NoteListItem[]=n.data.map(x=>({...x,position:map.get(x.question_id)?.position??0,stem:map.get(x.question_id)?.stem??"Reactivo no disponible"}));
+    return {items,total:n.count??0};
+   },
+   async importBank(text){
+    const r=await db.rpc("egel_import_bank_v1",{p_source:text});
+    if(r.error?.code==="42501")throw new StudyError("IMPORT_FORBIDDEN",403);
+    if(r.error?.code==="22023")throw new StudyError("BANK_FILE_MISMATCH",400);
+    if(r.error?.code==="23505")throw new StudyError("BANK_CONFLICT",409);
+    dbError(r.error);return r.data as {ok:true;count:number;already_imported:boolean};
+   },
+  };return {ok:true,repository};
+ }catch{return {ok:false,code:"AUTH_UNAVAILABLE",status:503};}
+};
