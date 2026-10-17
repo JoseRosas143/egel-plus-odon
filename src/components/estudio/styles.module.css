@@ -10,6 +10,15 @@
 .toolbar .iconButton { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; padding:0; }
 .meta { font-size:13px; color:#52647b; margin:8px 0 12px; }
 .workspace { display:grid; align-items:stretch; flex:1; min-height:0; }
+.workspace.focusMode { position:fixed; inset:0; z-index:150; display:flex; padding:12px; padding-top:max(12px,env(safe-area-inset-top,0px)); padding-bottom:max(12px,env(safe-area-inset-bottom,0px)); background:#f6f9fe; }
+.workspace.focusMode > .panel:not([data-panel="tutor"]),.workspace.focusMode > .separator { display:none; }
+.workspace.focusMode > .panel[data-panel="tutor"] { display:flex; flex:1; min-width:0; border-radius:14px; }
+.focusMode .chatHistory { padding-inline:max(12px,calc((100% - 1050px)/2)); }
+.focusToggle { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:32px; min-height:32px; padding:4px 6px; border:1px solid #cad8eb; border-radius:7px; color:#2859ba; background:#f7faff; font:inherit; font-size:12px; cursor:pointer; white-space:nowrap; }
+.focusToggle:hover { background:#e8f1ff; }
+.focusToggle:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+.focusLabel { display:none; }
+.focusMode .focusLabel { display:inline; }
 .panel { box-sizing:border-box; min-width:0; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; border:1px solid #deebff; border-radius:14px; padding:16px 16px 12px; background:#fff; overflow-wrap:anywhere; }
 .panel h2 { display:flex; align-items:center; gap:9px; margin:0; font-size:18px; font-weight:750; line-height:1.3; letter-spacing:-.35px; color:#112b5c; }
 .panel h2 svg { color:#2563ff; flex:none; }
@@ -96,6 +105,25 @@
 .tutorAnswer,.tutorQuestion { min-width:0; padding:12px 8px; margin-bottom:16px; border-bottom:1px solid #e5edf7; }
 .tutorQuestion { border:0; border-radius:12px; background:#eff6ff; margin-left:20px; }
 .messageAuthor { display:block; color:#41618c; font-size:12px; font-weight:600; margin-bottom:8px; }
+.savedProvenance { color:#64748b; font-size:12px; line-height:1.5; margin:0 0 12px; }
+.comparison { container-type:inline-size; container-name:comparison; min-width:0; }
+.comparison h3 { margin:0; font-size:17px; color:#17315e; }
+.comparisonHeading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin:6px 0 14px; }
+.comparisonHeading p { margin:4px 0 0; color:#64748b; font-size:12px; }
+.comparisonHeading button { min-height:34px; padding:6px 10px; font-size:12px; }
+.comparisonGrid { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; align-items:start; }
+.comparisonCard { min-width:0; padding:12px; border:1px solid #d6e4fb; border-radius:12px; background:#fbfdff; font-size:14px; }
+.comparisonCard h4 { margin:0 0 5px; color:#17315e; font-size:15px; }
+.comparisonText > summary,.comparisonGuide > summary { cursor:pointer; color:#2859ba; font-weight:600; font-size:13px; padding:7px 0; }
+.comparisonText > summary:focus-visible,.comparisonGuide > summary:focus-visible,.historyRefresh:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+.comparisonText > [data-tutor-response] { margin-top:10px; }
+.comparisonGuide { margin-top:14px; padding:8px 12px; border-radius:10px; background:#eff6ff; font-size:13px; }
+.comparisonGuide ul { margin:8px 0; padding-left:20px; }
+.comparisonFooter { margin-top:14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+.comparisonFooter p { color:#64748b; font-size:12px; line-height:1.5; margin:0; max-width:48ch; }
+.comparisonFooter button { min-height:38px; padding:8px 12px; font-size:13px; }
+@container comparison (min-width:800px) { .comparisonGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:767px) { .compareExpand { display:none; } }
 .richText { overflow-wrap:anywhere; min-width:0; font-size:15px; line-height:1.7; }
 .richText p { margin:0 0 14px; }
 .richText h1,.richText h2,.richText h3,.richText h4 { font-size:17px; line-height:1.4; font-weight:650; margin:20px 0 10px; }
@@ -115,6 +143,8 @@
 .citationList a { display:block; margin:8px 0; color:#1d4ed8; text-decoration:underline; text-underline-offset:3px; }
 .tutorStatus { color:#1d4ed8; background:#eff6ff; padding:12px; border-radius:8px; font-size:14px; }
 .tutorError { color:#8c2436; background:#fff3f3; padding:12px; border-radius:8px; font-size:14px; }
+.retryConfirmation { border:1px solid #e9d9a8; border-radius:10px; padding:12px; background:#fff9e9; color:#594b2b; font-size:14px; line-height:1.6; }
+.retryConfirmation p { margin:0 0 12px; }
 .historyRefresh { border:0; padding:8px; color:#41618c; background:transparent; font:inherit; font-size:12px; cursor:pointer; }
 .questionPreview { border:1px solid #bdd2f2; border-radius:12px; padding:12px; background:#f4f8ff; margin-top:16px; }
 .previewHeading { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:#41618c; margin-bottom:10px; }

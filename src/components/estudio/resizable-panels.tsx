@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import s from "./styles.module.css";
 
 export type StudyPanel = "reactivo" | "tutor" | "notas";
@@ -8,12 +8,57 @@ const defaults = [30, 42, 28];
 const minimumPixels = [240, 280, 240];
 type Drag = { pointerId: number; index: number; x: number; width: number; sizes: number[] };
 
-export function ResizablePanels({ active, reactivo, tutor, notas }: {
+export function ResizablePanels({ active, reactivo, tutor, notas, focused = false, onExitFocus, notification }: {
   active: StudyPanel; reactivo: ReactNode; tutor: ReactNode; notas: ReactNode;
+  focused?: boolean; onExitFocus?: () => void;
+  notification?: ReactNode;
 }) {
   const [sizes, setSizes] = useState(defaults);
   const root = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
+
+  useEffect(() => {
+    const container = root.current;
+    if (!focused || !container) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    const background: { element: HTMLElement; inert: boolean }[] = [];
+    // Keep the same DOM/state: hide and make inert only the surrounding interface.
+    let current: HTMLElement = container;
+    while (current.parentElement) {
+      for (const sibling of current.parentElement.children) {
+        if (sibling !== current && sibling instanceof HTMLElement) {
+          background.push({ element: sibling, inert: sibling.inert }); sibling.inert = true;
+        }
+      }
+      current = current.parentElement;
+      if (current === document.body) break;
+    }
+    document.body.style.overflow = "hidden";
+    container.querySelector<HTMLButtonElement>("#tutor-focus-toggle")?.focus();
+    function keyboard(event: globalThis.KeyboardEvent) {
+      if (event.defaultPrevented || event.isComposing) return;
+      if (event.key === "Escape") {
+        // The inner menu owns the first Escape, even when its listener was added later.
+        if (container!.querySelector('[aria-controls="study-commands"][aria-expanded="true"]')) return;
+        event.preventDefault(); onExitFocus?.();
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(container!.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,[tabindex]:not([tabindex="-1"])'))
+        .filter(element => element.getClientRects().length > 0 && !element.closest('[inert]'));
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && (document.activeElement === first || !container!.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !container!.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", keyboard);
+    return () => {
+      document.removeEventListener("keydown", keyboard);
+      for (const item of background) item.element.inert = item.inert;
+      document.body.style.overflow = overflow;
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [focused, onExitFocus]);
 
   function contentWidth() { return Math.max(1, (root.current?.getBoundingClientRect().width ?? 1024) - 24); }
   function resize(index: number, desired: number, original: number[], width: number) {
@@ -64,11 +109,13 @@ export function ResizablePanels({ active, reactivo, tutor, notas }: {
   const style: CSSProperties = {
     gridTemplateColumns: `minmax(240px, ${sizes[0]}fr) 12px minmax(280px, ${sizes[1]}fr) 12px minmax(240px, ${sizes[2]}fr)`,
   };
-  return <div ref={root} className={s.workspace} style={style}>
+  return <div ref={root} className={`${s.workspace} ${focused ? s.focusMode : ""}`} style={style}
+    role={focused ? "dialog" : undefined} aria-modal={focused ? true : undefined} aria-label={focused ? "Tutor IA · Modo concentración" : undefined}>
     <section id="study-reactivo" data-panel="reactivo" aria-label="Reactivo" className={`${s.panel} ${active !== "reactivo" ? s.mobileHidden : ""}`}>{reactivo}</section>
     {separator(0, "Ajustar ancho de Reactivo y Tutor IA")}
     <section id="study-tutor" data-panel="tutor" aria-label="Tutor IA" className={`${s.panel} ${s.tutorPanel} ${active !== "tutor" ? s.mobileHidden : ""}`}>{tutor}</section>
     {separator(1, "Ajustar ancho de Tutor IA y Mis notas")}
     <section id="study-notas" data-panel="notas" aria-label="Mis notas" className={`${s.panel} ${active !== "notas" ? s.mobileHidden : ""}`}>{notas}</section>
+    {notification}
   </div>;
 }

@@ -81,3 +81,18 @@ test('source preflight rejects other active/pending documents or pagination',asy
  const original=globalThis.fetch;const approved={name:store+domain.source.documentSuffix,state:'STATE_ACTIVE'};
  try{for(const response of [{documents:[approved,{name:'unknown',state:'STATE_PENDING'}]},{documents:[approved],nextPageToken:'more'},{documents:[]}]){globalThis.fetch=async()=>Response.json(response);await assert.rejects(()=>gemini.checkSource(config),/TUTOR_SOURCE/);}globalThis.fetch=async()=>Response.json({documents:[approved,{name:store+domain.source.failedDocumentSuffix,state:'STATE_FAILED'}]});await gemini.checkSource(config);}finally{globalThis.fetch=original;}
 });
+
+test('request carries numerical and attribution checks without inventing an answer',async()=>{
+ const original=globalThis.fetch;let inspected=false;
+ try{
+  globalThis.fetch=async(url,options)=>{
+   const b=JSON.parse(options.body),instructions=b.system_instruction;
+   for(const rule of ['verifica operaciones y unidades','usa el menor de ambos','nunca redondees al alza un máximo','No redondees las tasas de la fuente','solo una hipótesis','El historial puede contener errores','La elección o insistencia del alumno no es evidencia'])assert(instructions.includes(rule),rule);
+   assert(!instructions.includes('respuesta correcta: C'));assert.equal(b.store,false);assert.equal(b.tools.length,1);
+   inspected=true;
+   return Response.json({status:'completed',steps:[{type:'model_output',content:[{type:'text',text:'Offline contract fixture',annotations:[annotation]}]}]});
+  };
+  const result=await gemini.askGemini(config,q,[],'Comprueba los cálculos');
+  assert(inspected);assert.equal(result.text,'Offline contract fixture');assert.equal(result.citations[0].page,64);
+ }finally{globalThis.fetch=original;}
+});

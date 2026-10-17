@@ -273,6 +273,13 @@ export function AccessForm({
           onSubmit={submit}
           aria-busy={pending}
         >
+          {register ? (
+            <aside className={styles.privacyNotice} aria-label="Privacidad y condiciones de registro">
+              <p>Responsable: J. A. Rosas Abarca · J R Aprende. Av. 5 de Mayo 25, colonia Vicente Suárez, C. P. 72380, Puebla, Puebla, México.</p>
+              <p>Usamos tu correo, nombre y credenciales para crear y proteger tu cuenta; tus preferencias y registros, para conservar tu estudio. Puedes limitar usos y ejercer derechos ARCO en egelplusodon@jraprende.online.</p>
+              <p>Antes de enviar tus datos, consulta el <a href="/privacidad" target="_blank" rel="noopener noreferrer">aviso de privacidad integral</a> y los <a href="/terminos" target="_blank" rel="noopener noreferrer">términos y condiciones</a>. El uso de la plataforma no garantiza aprobar el examen.</p>
+            </aside>
+          ) : null}
           <fieldset
             className={styles.fields}
             disabled={pending}

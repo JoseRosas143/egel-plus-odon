@@ -14,6 +14,7 @@ import { TutorPanel, emptyChatDrafts, type StudyCommand, type TutorView } from "
 import { StudyToast, type ToastMessage } from "./study-toast";
 import { prepareTutorRequest, type TutorCommand } from "@/lib/estudio/tutor-commands";
 import { useLiterature } from "./use-literature";
+import { useOpinion } from "./use-opinion";
 
 type Loaded = { ok: true; total: number; can_import: boolean; question: Question | null; note: Note | null; last_answer: Attempt | null };
 const panels = [{ key: "reactivo", label: "Reactivo" }, { key: "tutor", label: "Tutor IA" }, { key: "notas", label: "Mis notas" }] as const;
@@ -46,6 +47,12 @@ export function StudyWorkspace() {
   const [panel, setPanel] = useState<StudyPanel>("reactivo");
   const [chatDrafts, setChatDrafts] = useState(emptyChatDrafts);
   const [tutorView, setTutorView] = useState<TutorView>("base");
+  const [tutorFocused, setTutorFocused] = useState(false);
+  const exitTutorFocus = useCallback(() => setTutorFocused(false), []);
+  const focusPersonalVerdict = useCallback(() => {
+    setTutorFocused(false); setPanel("notas");
+    requestAnimationFrame(() => document.getElementById("personal-verdict")?.focus());
+  }, []);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const toastSequence = useRef(0);
   const [number, setNumber] = useState("1");
@@ -58,6 +65,7 @@ export function StudyWorkspace() {
   const questionId = q?.id, questionVersion = q?.version;
   const total = model?.total ?? 0;
   const lastAnswer = model?.last_answer;
+  const opinion = useOpinion(q,tutorView === "segunda" || tutorView === "comparar",!!lastAnswer);
   const unsaved = literature.sending || dirty || selected !== (lastAnswer?.selected_answer ?? null) || Object.values(chatDrafts).some(value => value.trim().length > 0);
 
   const dismissToast = useCallback(() => setToast(null), []);
@@ -82,6 +90,7 @@ export function StudyWorkspace() {
     setDirty(false);
     setChatDrafts(emptyChatDrafts());
     setTutorView("base");
+    setTutorFocused(false);
   }, []);
   const change = useCallback(<K extends keyof NoteFields,>(key: K, value: NoteFields[K]) => {
     setFields(old => ({ ...old, [key]: value }));
@@ -234,7 +243,7 @@ export function StudyWorkspace() {
       setChatDrafts(old => ({ ...old, [view]: request }));
       setPanel("tutor");
       requestAnimationFrame(() => document.getElementById("tutor-question")?.focus());
-      notify(view === "base" ? "Solicitud preparada. Revísala y pulsa Enviar cuando quieras consultarla." : "Solicitud preparada como borrador. Esta vista todavía está pendiente de conexión.");
+      notify(view === "base" ? "Solicitud preparada. Revísala y pulsa Enviar cuando quieras consultarla." : "Solicitud preparada como borrador. Esta vista de lectura no envía consultas a IA.");
       return true;
     } catch (e) { notify(errorText(e)); return false; }
   }
@@ -242,6 +251,7 @@ export function StudyWorkspace() {
     if (busy || !q) return false;
     if (command === "/guardar") return save();
     if (command === "/apuntes") {
+      setTutorFocused(false);
       setPanel("notas");
       requestAnimationFrame(() => notebook.current?.focus());
       return true;
@@ -276,7 +286,7 @@ export function StudyWorkspace() {
 
   return <AccessShell wide study action={nav}>
     <h1 className={s.srOnly}>Espacio de estudio</h1>
-    <StudyToast key={toast?.id ?? 0} message={toast} onDismiss={dismissToast} />
+    {!q ? <StudyToast key={toast?.id ?? 0} message={toast} onDismiss={dismissToast} /> : null}
     {loading ? <p role="status">Cargando tu espacio...</p> : null}
     {!loading && !model ? <button className={a.button} type="button" onClick={() => void go()}>Volver a intentar</button> : null}
     {model && total === 0 ? <p className={a.notice}>Todavía no hay reactivos disponibles. La carga inicial del banco se administra fuera del área de estudio.</p> : null}
@@ -286,7 +296,8 @@ export function StudyWorkspace() {
           aria-selected={panel === item.key} aria-controls={"study-" + item.key} tabIndex={panel === item.key ? 0 : -1}
           onKeyDown={event => switchPanel(event, index)} onClick={() => setPanel(item.key)}><PanelIcon name={item.key} /><span>{item.label}</span></button>)}
       </div>
-      <ResizablePanels active={panel}
+      <ResizablePanels active={panel} focused={tutorFocused} onExitFocus={exitTutorFocus}
+        notification={<StudyToast key={toast?.id ?? 0} message={toast} onDismiss={dismissToast} />}
         reactivo={<>
           <div className={s.panelHeading}>
             <h2 className={a.sectionTitle}>Reactivo {String(q.position).padStart(3, "0")} <span className={s.counter}>/ {total}</span></h2>
@@ -323,13 +334,13 @@ export function StudyWorkspace() {
               <button type="button" className={a.button} disabled={busy || q.position >= total} aria-label="Siguiente reactivo" onClick={() => void go(q.position + 1)}>Siguiente<NavigationIcon name="next" /></button></div>
           </div>
         </>}
-        tutor={<TutorPanel position={q.position} busy={busy} drafts={chatDrafts} onDraft={updateDraft} onCommand={runCommand} onPrepare={prepareCommand} onNotice={notify} literature={literature} answered={!!lastAnswer} view={tutorView} onView={setTutorView} />}
+        tutor={<TutorPanel position={q.position} busy={busy} drafts={chatDrafts} onDraft={updateDraft} onCommand={runCommand} onPrepare={prepareCommand} onNotice={notify} literature={literature} opinion={opinion} answered={!!lastAnswer} view={tutorView} onView={setTutorView} onVerdict={focusPersonalVerdict} focused={tutorFocused} onToggleFocus={() => { setPanel("tutor"); setTutorFocused(old => !old); }} />}
         notas={<>
           <div className={s.panelHeading}><h2 className={a.sectionTitle}><AppIcon name="notes" />Mis notas</h2></div>
           <fieldset className={a.fields} disabled={busy}>
             <div className={s.verdictSummary}>
               <button type="button" className={s.initialChoice} title="Editar tu respuesta inicial. Sin calificación." onClick={() => { setPanel("reactivo"); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#study-reactivo input[type="radio"]:checked, #study-reactivo input[type="radio"]')?.focus()); }}>Inicial: <strong>{lastAnswer?.selected_answer ?? "—"}</strong><AppIcon name="pencil" size={15} /></button>
-              <label className={s.personalChoice}><span>Veredicto personal</span><select className={a.input} aria-label="Mi veredicto personal" value={fields.personal_verdict ?? ""} onChange={event => change("personal_verdict", event.target.value ? event.target.value as Letter : null)}>
+              <label className={s.personalChoice}><span>Veredicto personal</span><select id="personal-verdict" className={a.input} aria-label="Mi veredicto personal" value={fields.personal_verdict ?? ""} onChange={event => change("personal_verdict", event.target.value ? event.target.value as Letter : null)}>
                 <option value="">Sin decidir</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></label>
             </div>
             <label className={a.field}><span className={a.label}>Apuntes generales</span>
