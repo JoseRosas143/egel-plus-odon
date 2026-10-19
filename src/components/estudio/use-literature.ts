@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Question } from "@/lib/estudio/domain";
-import { tutorErrors, type TutorHistory, type TutorMessage } from "@/lib/tutor/domain";
+import { tutorErrors, type TutorHistory, type TutorMessage, type SharedBaseStatus } from "@/lib/tutor/domain";
 
-type State = { identity: string; messages: TutorMessage[]; enabled: boolean; covered: boolean; pending: boolean; retryable: boolean; error: string; loading: boolean };
+type State = { identity: string; messages: TutorMessage[]; enabled: boolean; covered: boolean; pending: boolean; retryable: boolean; error: string; loading: boolean; sharedBase?: SharedBaseStatus };
 const empty: State = { identity: "", messages: [], enabled: false, covered: false, pending: false, retryable: false, error: "", loading: true };
 export function useLiterature(q: Question | null | undefined) {
   const [state, setState] = useState<State>(empty);
@@ -47,7 +47,7 @@ export function useLiterature(q: Question | null | undefined) {
         return false;
       }
       if (current.current === identity) {
-        setState(old => ({ ...old, identity, messages: data.messages, loading: false, error: "", pending: false, retryable: false }));
+        setState(old => ({ ...old, identity, messages: data.messages, sharedBase: data.sharedBase ?? old.sharedBase, loading: false, error: "", pending: false, retryable: false }));
         return true;
       }
     } catch(e) {

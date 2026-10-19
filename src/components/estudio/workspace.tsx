@@ -50,7 +50,7 @@ export function StudyWorkspace() {
   const [tutorFocused, setTutorFocused] = useState(false);
   const exitTutorFocus = useCallback(() => setTutorFocused(false), []);
   const focusPersonalVerdict = useCallback(() => {
-    setTutorFocused(false); setPanel("notas");
+    setPanel("notas");
     requestAnimationFrame(() => document.getElementById("personal-verdict")?.focus());
   }, []);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -251,7 +251,6 @@ export function StudyWorkspace() {
     if (busy || !q) return false;
     if (command === "/guardar") return save();
     if (command === "/apuntes") {
-      setTutorFocused(false);
       setPanel("notas");
       requestAnimationFrame(() => notebook.current?.focus());
       return true;
@@ -269,6 +268,7 @@ export function StudyWorkspace() {
     else if (event.key === "End") next = panels.length - 1;
     else return;
     event.preventDefault();
+    if (panels[next].key === "reactivo") setTutorFocused(false);
     setPanel(panels[next].key);
     document.getElementById("panel-tab-" + panels[next].key)?.focus();
   }
@@ -294,7 +294,7 @@ export function StudyWorkspace() {
       <div className={s.mobileTabs} role="tablist" aria-label="Paneles de estudio">
         {panels.map((item, index) => <button type="button" role="tab" id={"panel-tab-" + item.key} key={item.key}
           aria-selected={panel === item.key} aria-controls={"study-" + item.key} tabIndex={panel === item.key ? 0 : -1}
-          onKeyDown={event => switchPanel(event, index)} onClick={() => setPanel(item.key)}><PanelIcon name={item.key} /><span>{item.label}</span></button>)}
+          onKeyDown={event => switchPanel(event, index)} onClick={() => { if (item.key === "reactivo") setTutorFocused(false); setPanel(item.key); }}><PanelIcon name={item.key} /><span>{item.label}</span></button>)}
       </div>
       <ResizablePanels active={panel} focused={tutorFocused} onExitFocus={exitTutorFocus}
         notification={<StudyToast key={toast?.id ?? 0} message={toast} onDismiss={dismissToast} />}
@@ -339,7 +339,7 @@ export function StudyWorkspace() {
           <div className={s.panelHeading}><h2 className={a.sectionTitle}><AppIcon name="notes" />Mis notas</h2></div>
           <fieldset className={a.fields} disabled={busy}>
             <div className={s.verdictSummary}>
-              <button type="button" className={s.initialChoice} title="Editar tu respuesta inicial. Sin calificación." onClick={() => { setPanel("reactivo"); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#study-reactivo input[type="radio"]:checked, #study-reactivo input[type="radio"]')?.focus()); }}>Inicial: <strong>{lastAnswer?.selected_answer ?? "—"}</strong><AppIcon name="pencil" size={15} /></button>
+              <button type="button" className={s.initialChoice} title="Editar tu respuesta inicial. Sin calificación." onClick={() => { setTutorFocused(false); setPanel("reactivo"); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#study-reactivo input[type="radio"]:checked, #study-reactivo input[type="radio"]')?.focus()); }}>Inicial: <strong>{lastAnswer?.selected_answer ?? "—"}</strong><AppIcon name="pencil" size={15} /></button>
               <label className={s.personalChoice}><span>Veredicto personal</span><select id="personal-verdict" className={a.input} aria-label="Mi veredicto personal" value={fields.personal_verdict ?? ""} onChange={event => change("personal_verdict", event.target.value ? event.target.value as Letter : null)}>
                 <option value="">Sin decidir</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></label>
             </div>

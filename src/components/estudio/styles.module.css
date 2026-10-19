@@ -10,10 +10,7 @@
 .toolbar .iconButton { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; padding:0; }
 .meta { font-size:13px; color:#52647b; margin:8px 0 12px; }
 .workspace { display:grid; align-items:stretch; flex:1; min-height:0; }
-.workspace.focusMode { position:fixed; inset:0; z-index:150; display:flex; padding:12px; padding-top:max(12px,env(safe-area-inset-top,0px)); padding-bottom:max(12px,env(safe-area-inset-bottom,0px)); background:#f6f9fe; }
-.workspace.focusMode > .panel:not([data-panel="tutor"]),.workspace.focusMode > .separator { display:none; }
-.workspace.focusMode > .panel[data-panel="tutor"] { display:flex; flex:1; min-width:0; border-radius:14px; }
-.focusMode .chatHistory { padding-inline:max(12px,calc((100% - 1050px)/2)); }
+.workspace.focusMode > [data-panel="reactivo"],.workspace.focusMode > [data-separator-index="0"] { display:none; }
 .focusToggle { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:32px; min-height:32px; padding:4px 6px; border:1px solid #cad8eb; border-radius:7px; color:#2859ba; background:#f7faff; font:inherit; font-size:12px; cursor:pointer; white-space:nowrap; }
 .focusToggle:hover { background:#e8f1ff; }
 .focusToggle:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }

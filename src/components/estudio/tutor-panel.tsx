@@ -46,6 +46,8 @@ export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepa
   const composer = useRef<HTMLFormElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const draft = drafts[view];
+  const shared = literature.messages.some(message => message.origin === "shared-reviewed");
+  const baseNotice = shared ? "Explicación base revisada y compartida. Leerla o volver a abrirla no consulta a Gemini/OpenAI. Las referencias indican páginas del PDF, sin distribuir los libros. No es una clave oficial ni cambia tu veredicto; las dudas personales todavía no están conectadas aquí." : literature.sharedBase && !literature.enabled ? "Las explicaciones comunes deben revisarse antes de publicarse. Guarda tu respuesta para consultar la que esté disponible; si falta, no se genera automáticamente. Las dudas personales siguen pendientes de conexión." : "Piloto local: Malamed 5.ª ed. (2006), solo PDF 61–70 y reactivo 034. Hasta 6 consultas en total; sin llamadas a OpenAI. No es una clave oficial.";
   const command = commands.find(item => item.text === draft.trim().toLowerCase());
   const tutorCommand = tutorCommands.find(item => item.command === draft.trim().toLowerCase());
   const canExecute = !!command || !!tutorCommand || (view === "base" && answered && literature.enabled && literature.covered && !literature.pending && !!draft.trim());
@@ -113,9 +115,9 @@ export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepa
   return <>
     <div className={s.panelHeading}>
       <h2 className={a.sectionTitle}><AppIcon name="shield" />Tutor IA<span className={s.srOnly}> · Reactivo {position}</span></h2>
-      <div className={s.headingTools}><button type="button" className={s.connection} title="Ver alcance del tutor" onClick={() => onNotice(view === "base" ? "Piloto local: Malamed 5.ª ed. (2006), solo PDF 61–70 y reactivo 034. Hasta 6 consultas en total; sin llamadas a OpenAI. No es una clave oficial." : view === "segunda" ? "Segunda opinión: lectura de un análisis real de OpenAI guardado durante el piloto del 034, independiente de Gemini y de tu elección. No es una consulta nueva, búsqueda en vivo ni chat conectado. No consume créditos al abrirlo. No es una clave oficial." : "Comparación de lectura de los análisis existentes: no se genera un resumen ni un dictamen de IA, no consume consultas y no cambia tu veredicto. Revisa las fuentes y decide tú.")}>{view === "base" && literature.enabled ? "Piloto · Malamed" : view === "segunda" && opinion.enabled ? "Piloto guardado" : view === "comparar" ? "Lectura" : "Sin conexión"}</button>
-      <button id="tutor-focus-toggle" className={s.focusToggle} type="button" aria-pressed={focused} aria-controls="study-tutor"
-        aria-label={focused ? "Salir del modo concentración" : "Ampliar Tutor"} title={focused ? "Volver a los paneles (Esc)" : "Modo concentración"} onClick={onToggleFocus}>
+      <div className={s.headingTools}><button type="button" className={s.connection} title="Ver alcance del tutor" onClick={() => onNotice(view === "base" ? baseNotice : view === "segunda" ? "Segunda opinión: lectura de un análisis real de OpenAI guardado durante el piloto del 034, independiente de Gemini y de tu elección. No es una consulta nueva, búsqueda en vivo ni chat conectado. No consume créditos al abrirlo. No es una clave oficial." : "Comparación de lectura de los análisis existentes: no se genera un resumen ni un dictamen de IA, no consume consultas y no cambia tu veredicto. Revisa las fuentes y decide tú.")}>{view === "base" && shared ? "Base revisada" : view === "base" && literature.enabled ? "Piloto · Malamed" : view === "base" && literature.sharedBase ? "Base común" : view === "segunda" && opinion.enabled ? "Piloto guardado" : view === "comparar" ? "Lectura" : "Sin conexión"}</button>
+      <button id="tutor-focus-toggle" className={s.focusToggle} type="button" aria-pressed={focused} aria-controls="study-reactivo study-tutor study-notas"
+        aria-label={focused ? "Salir del modo concentración" : "Ampliar Tutor"} title={focused ? "Volver a los tres paneles (Esc)" : "Amplía el tutor manteniendo Mis notas disponible"} onClick={onToggleFocus}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {focused ? <path d="M4 9h5V4m11 5h-5V4M4 15h5v5m11-5h-5v5" /> : <path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" />}
         </svg><span className={s.focusLabel}>{focused ? "Volver" : "Ampliar"}</span>
@@ -130,14 +132,15 @@ export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepa
     <div className={s.chatHistory} id="tutor-content" role="tabpanel" aria-labelledby={"tutor-tab-" + view} aria-busy={view === "base" && literature.sending}>
       {preview && draft.trim() ? null : view === "base" ? <>
         {literature.messages.map(message => <article className={message.role === "assistant" ? s.tutorAnswer : s.tutorQuestion} key={message.id}>
-          <span className={s.messageAuthor}>{message.role === "assistant" ? "Literatura · Gemini" : "Tú"}</span>
+          <span className={s.messageAuthor}>{message.origin === "shared-reviewed" ? "Literatura · base revisada" : message.role === "assistant" ? "Literatura · Gemini" : "Tú"}</span>
+          {message.origin === "shared-reviewed" ? <p className={s.savedProvenance}>Revisión: <time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleDateString("es-MX", { timeZone: "UTC" })}</time> · Lectura compartida, sin nueva consulta</p> : null}
           <div data-tutor-response={message.role === "assistant" ? "true" : undefined}><TutorRichText text={message.text} /></div>
-          {message.citations.length ? <details className={s.citationList}><summary>Fuentes recuperadas · {message.citations.length} páginas</summary><p>Abre estos enlaces para revisar el respaldo. Los números escritos por el modelo no sustituyen estos metadatos. Es una edición histórica.</p>
-            {message.citations.map(c => <a key={c.page} href={c.href} target="_blank" rel="noopener noreferrer">{c.label} ↗</a>)}</details> : null}
+          {message.citations.length ? <details className={s.citationList}><summary>Fuentes {message.origin === "shared-reviewed" ? "revisadas" : "recuperadas"} · {message.citations.length} páginas</summary><p>{message.origin === "shared-reviewed" ? "Se indican páginas del PDF, no páginas impresas deducidas. Los enlaces llevan al catálogo bibliográfico, no a una descarga de los libros." : "Abre estos enlaces para revisar el respaldo. Los números escritos por el modelo no sustituyen estos metadatos. Es una edición histórica."}</p>
+            {message.citations.map(c => <a key={c.href + c.label} href={c.href} target="_blank" rel="noopener noreferrer">{c.label} ↗</a>)}</details> : null}
         </article>)}
         {literature.loading ? <p role="status">Cargando historial…</p> : null}
         {!literature.loading && !literature.messages.length ? <div className={s.chatWelcome}><span className={s.welcomeIcon}><AppIcon name="book" size={34} /></span>
-          <h3>Primero, tu razonamiento</h3><p>{!literature.enabled ? "El piloto no está habilitado en este servidor." : !literature.covered ? "Este tema aún no tiene bibliografía habilitada. El piloto está disponible en el reactivo 034." : answered ? "Tu respuesta inicial está guardada. Puedes iniciar el análisis o reintentarlo más tarde si el proveedor no respondió." : "Guarda tu respuesta inicial para iniciar el análisis de Literatura."}</p>
+          <h3>Primero, tu razonamiento</h3><p>{!literature.enabled && literature.sharedBase ? answered ? "Aún no hay una explicación revisada para este reactivo. Tu respuesta está guardada; no se consultó a la IA." : "Guarda tu respuesta inicial para consultar la explicación revisada que esté disponible." : !literature.enabled ? "El piloto no está habilitado en este servidor." : !literature.covered ? "Este tema aún no tiene bibliografía habilitada. El piloto está disponible en el reactivo 034." : answered ? "Tu respuesta inicial está guardada. Puedes iniciar el análisis o reintentarlo más tarde si el proveedor no respondió." : "Guarda tu respuesta inicial para iniciar el análisis de Literatura."}</p>
           {answered && literature.enabled && literature.covered ? <button id="retry-analysis" className={a.button} type="button" disabled={busy || literature.sending} aria-expanded={retryConfirmation === position} aria-controls="retry-confirmation" onClick={() => {
             if (literature.pending) {
               setRetryConfirmation(position);
@@ -174,7 +177,7 @@ export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepa
     <form ref={composer} className={s.composer} onSubmit={submit}>
       <label className={s.srOnly} htmlFor="tutor-question">Tu pregunta al tutor</label>
       <textarea className={s.chatInput} id="tutor-question" rows={2} value={draft} maxLength={4000} disabled={busy || pending || literature.sending}
-        aria-describedby="tutor-connection-hint" placeholder={view === "segunda" ? "Borrador · el chat de segunda opinión aún no está conectado" : view === "comparar" ? "Borrador de comparación · sin envío a IA" : "Haz una pregunta o pide otra perspectiva…"}
+        aria-describedby="tutor-connection-hint" placeholder={view === "segunda" ? "Borrador · el chat de segunda opinión aún no está conectado" : view === "comparar" ? "Borrador de comparación · sin envío a IA" : literature.sharedBase && !literature.enabled ? "Borrador · dudas personales pendientes de conexión" : "Haz una pregunta o pide otra perspectiva…"}
         onChange={event => onDraft(view, event.target.value)} />
       <div className={s.composerTools}>
         <button ref={menuButton} type="button" className={s.commandToggle} aria-expanded={menuOpen} aria-controls="study-commands"
@@ -191,7 +194,7 @@ export function TutorPanel({ position, busy, drafts, onDraft, onCommand, onPrepa
         </button>
         </div>
       </div>
-      <p id="tutor-connection-hint" className={s.srOnly}>Literatura admite Markdown, tablas y fórmulas. Primero guarda tu respuesta. Piloto limitado al reactivo 034. Segunda opinión solo muestra un análisis previo, sin chat en vivo. Comparar permite leer los originales, sin síntesis de IA ni envío de preguntas. Los comandos de navegación y apuntes siguen disponibles.</p>
+      <p id="tutor-connection-hint" className={s.srOnly}>Literatura admite Markdown, tablas y fórmulas. Primero guarda tu respuesta. {literature.sharedBase && !literature.enabled ? "Las explicaciones comunes requieren revisión; abrirlas no genera una nueva consulta. Dudas personales pendientes de conexión." : "Piloto limitado al reactivo 034."} Segunda opinión solo muestra un análisis previo, sin chat en vivo. Comparar permite leer los originales, sin síntesis de IA ni envío de preguntas. Los comandos de navegación y apuntes siguen disponibles.</p>
       {menuOpen ? <div className={s.commandPopover} id="study-commands" role="group" aria-label="Comandos de estudio">
         {tutorCommands.map(item => <button type="button" key={item.command} disabled={busy || pending}
           aria-label={item.label} onClick={() => prepare(item.command)}><span>{item.label}</span><code>{item.command}</code></button>)}

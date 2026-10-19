@@ -1,11 +1,14 @@
-export type Citation = { page: number; printed: number; label: string; href: string };
-export type TutorMessage = { id: string; role: "user" | "assistant"; text: string; citations: Citation[]; createdAt: string };
-export type TutorHistory = { ok: true; messages: TutorMessage[]; enabled: boolean; covered: boolean; pending: boolean; retryable: boolean };
+export type Citation = { page: number; printed: number | null; label: string; href: string };
+export type TutorMessage = { id: string; role: "user" | "assistant"; text: string; citations: Citation[]; createdAt: string; origin?: "shared-reviewed"; baseId?: string };
+export type SharedBaseStatus = "available" | "pending" | "answer-required" | "legacy";
+export type TutorHistory = { ok: true; messages: TutorMessage[]; enabled: boolean; covered: boolean; pending: boolean; retryable: boolean; sharedBase?: SharedBaseStatus };
 export class TutorError extends Error {
   constructor(public code: string, public status = 400) { super(code); }
 }
 export const tutorErrors: Record<string, string> = {
   TUTOR_DISABLED: "El piloto de Literatura no está habilitado en este servidor.",
+  TUTOR_BASE_UNAVAILABLE: "No se pudo comprobar la explicación revisada. No se generó otra respuesta ni se consumió una consulta de IA.",
+  TUTOR_FOLLOWUP_DISABLED: "Las dudas personales aún no están conectadas en este servidor. Tu borrador sigue en pantalla; leer la explicación revisada no genera una nueva consulta.",
   TUTOR_COVERAGE: "Este piloto solo cubre el reactivo 034 con un fragmento de Malamed. Tu respuesta permanece guardada; aún falta habilitar bibliografía para este tema.",
   TUTOR_ANSWER_REQUIRED: "Primero selecciona y guarda tu respuesta inicial.",
   TUTOR_BUSY: "Hay una consulta en curso. Consulta el historial antes de volver a enviar.",

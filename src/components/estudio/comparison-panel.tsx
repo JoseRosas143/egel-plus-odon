@@ -19,10 +19,10 @@ export function ComparisonPanel({literature,opinion,answered,focused,disabled,on
     </div>
     <div className={s.comparisonGrid}>
       <section className={s.comparisonCard} aria-label="Análisis inicial de Literatura">
-        <h4>Literatura · Gemini</h4><p className={s.savedProvenance}>Análisis inicial · fragmento de Malamed, 5.ª ed. (2006)</p>
+        <h4>{initial?.origin === "shared-reviewed" ? "Literatura · base revisada" : "Literatura · Gemini"}</h4><p className={s.savedProvenance}>{initial?.origin === "shared-reviewed" ? "Explicación base revisada · lectura compartida, sin nueva consulta" : "Análisis inicial · fragmento de Malamed, 5.ª ed. (2006)"}</p>
         {initial ? <>
           <details open={focused} className={s.comparisonText}><summary>Leer análisis de Literatura</summary><div data-tutor-response="true"><TutorRichText text={initial.text} /></div></details>
-          {initial.citations.length ? <details className={s.citationList}><summary>Fuentes de Literatura · {initial.citations.length}</summary><p>Referencias recuperadas del fragmento histórico; no validan por sí solas cada afirmación.</p>{initial.citations.map(c=><a key={c.href} href={c.href} target="_blank" rel="noopener noreferrer">{c.label} ↗</a>)}</details> : <p className={s.savedProvenance}>Este análisis no contiene citas de página verificables.</p>}
+          {initial.citations.length ? <details className={s.citationList}><summary>Fuentes de Literatura · {initial.citations.length}</summary><p>{initial.origin === "shared-reviewed" ? "Referencias de la explicación revisada. Los enlaces abren el catálogo; no descargan los libros." : "Referencias recuperadas del fragmento histórico; no validan por sí solas cada afirmación."}</p>{initial.citations.map(c=><a key={c.href+c.label} href={c.href} target="_blank" rel="noopener noreferrer">{c.label} ↗</a>)}</details> : <p className={s.savedProvenance}>Este análisis no contiene citas de página verificables.</p>}
         </> : <p role={literature.loading || literature.sending ? "status" : undefined}>{literature.loading ? "Cargando el historial…" : literature.sending ? "La consulta de Literatura sigue en curso." : literature.error || "No hay un análisis inicial de Literatura disponible. No se sustituirá por una respuesta de seguimiento."}</p>}
         <button type="button" className={s.historyRefresh} onClick={()=>onView("base")}>Abrir Literatura</button>
       </section>

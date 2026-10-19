@@ -1,0 +1,90 @@
+// Template for a short-lived, operator-only import bridge. NOT an app API.
+// Generated secrets and signed tokens stay outside Git; deploy a closed 404
+// version when finished. No downloads, arbitrary SQL, or general admin actions.
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+const manifest = __MANIFEST__;
+const keyHash = "__KEY_HASH__";
+const deadline = __DEADLINE__;
+const bucket = "egel-library-private";
+const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+const digest = async (text: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))).map(b => b.toString(16).padStart(2,"0")).join("");
+Deno.serve(async req => {
+  if (req.method !== "POST" || Date.now() > deadline) return json({error:"CLOSED"},404);
+  const key = req.headers.get("x-egel-import-key") ?? "";
+  if (key.length !== 64 || await digest(key) !== keyHash) return json({error:"AUTH_REQUIRED"},401);
+  if (!req.headers.get("content-type")?.startsWith("application/json")) return json({error:"MEDIA"},415);
+  // Bound streamed input too, rather than trusting Content-Length.
+  const reader = req.body?.getReader(); if (!reader) return json({error:"BODY"},400);
+  const parts: Uint8Array[] = []; let bytes = 0;
+  for (;;) { const {value,done} = await reader.read(); if(done) break; bytes += value.length; if(bytes>900000){await reader.cancel();return json({error:"LIMIT"},413);} parts.push(value); }
+  try {
+    const input = JSON.parse(await new Blob(parts).text());
+    const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {auth:{persistSession:false,autoRefreshToken:false}});
+    if (input.action === "setup") {
+      const existing = await db.storage.getBucket(bucket);
+      if (!existing.data) {
+        const made = await db.storage.createBucket(bucket,{public:false,fileSizeLimit:50331648,allowedMimeTypes:["application/pdf","application/octet-stream"]});
+        if(made.error) return json({error:"BUCKET_SETUP",code:made.error.message},503);
+      } else if(existing.data.public) return json({error:"BUCKET_NOT_PRIVATE"},409);
+      return json({ok:true});
+    }
+    const doc = manifest.find(d=>d.id===input.id);
+    if(!doc) return json({error:"UNKNOWN_DOCUMENT"},404);
+    if(input.action === "status" || input.action === "sign") {
+      const b = await db.storage.getBucket(bucket);
+      if(b.error || b.data.public) return json({error:"PRIVATE_BUCKET_REQUIRED"},409);
+      const part = doc.parts.find(p=>p.ordinal===input.part);
+      if(!part) return json({error:"PART_REQUIRED"},400);
+      const slash=part.object_path.lastIndexOf("/"),folder=part.object_path.slice(0,slash),name=part.object_path.slice(slash+1);
+      const listed = await db.storage.from(bucket).list(folder,{search:name,limit:2});
+      if(listed.error) return json({error:"OBJECT_LOOKUP"},503);
+      const object = listed.data.find(x=>x.name===name);
+      if(object) {
+        if(Number(object.metadata?.size)!==part.file_bytes || object.metadata?.mimetype!==part.content_type) return json({error:"OBJECT_CONFLICT"},409);
+        const {parts,...record}=doc;
+        const saved = await db.from("library_documents").upsert({...record},{onConflict:"id",ignoreDuplicates:true});
+        if(saved.error) return json({error:"DOCUMENT_REGISTER"},503);
+        const {content_type,...partRecord}=part;
+        const savedPart=await db.from("library_document_parts").upsert({document_id:doc.id,...partRecord},{onConflict:"document_id,ordinal",ignoreDuplicates:true});
+        if(savedPart.error)return json({error:"PART_REGISTER"},503);
+        const count=await db.from("library_document_parts").select("ordinal",{count:"exact",head:true}).eq("document_id",doc.id);
+        if(count.count===parts.length) {
+          const updated = await db.from("library_documents").update({upload_state:"verified",updated_at:new Date().toISOString()}).eq("id",doc.id);
+          if(updated.error) return json({error:"DOCUMENT_VERIFY"},503);
+        }
+        return json({ok:true,exists:true,size:part.file_bytes});
+      }
+      if(input.action==="status") return json({ok:true,exists:false});
+      const signed = await db.storage.from(bucket).createSignedUploadUrl(part.object_path,{upsert:false});
+      if(signed.error) return json({error:"SIGN_UPLOAD"},503);
+      return json({ok:true,exists:false,token:signed.data.token});
+    }
+    const found = await db.from("library_documents").select("upload_state").eq("id",doc.id).maybeSingle();
+    if(found.error || found.data?.upload_state!=="verified") return json({error:"UPLOAD_REQUIRED"},409);
+    if(input.action==="chunks") {
+      if(doc.source_kind!=="literature") return json({error:"NOT_EVIDENCE"},422);
+      if(!Array.isArray(input.chunks)||!input.chunks.length||input.chunks.length>150) return json({error:"CHUNKS"},400);
+      const rows=[];
+      for(const c of input.chunks) {
+        if(!Number.isSafeInteger(c.ordinal)||c.ordinal<0||!Number.isSafeInteger(c.pdf_page)||c.pdf_page<1||c.pdf_page>doc.page_count ||
+           typeof c.body!=="string"||Array.from(c.body).length<100||Array.from(c.body).length>4000||c.body.includes("\0")||
+           !Number.isSafeInteger(c.start_char)||c.start_char<0||c.end_char-c.start_char!==Array.from(c.body).length||await digest(c.body)!==c.body_sha256) return json({error:"CHUNK_INVALID"},400);
+        rows.push({document_id:doc.id,ordinal:c.ordinal,pdf_page:c.pdf_page,start_char:c.start_char,end_char:c.end_char,body:c.body,body_sha256:c.body_sha256});
+      }
+      const saved=await db.from("library_chunks").upsert(rows,{onConflict:"document_id,ordinal",ignoreDuplicates:true});
+      return saved.error?json({error:"CHUNK_WRITE",code:saved.error.code},503):json({ok:true,count:rows.length});
+    }
+    if(input.action==="finalize") {
+      const s=input.extraction;
+      if(!s || s.version!=="local-text-v1"||s.pages!==doc.page_count||!Number.isSafeInteger(s.indexed_pages)||s.indexed_pages<0||
+         !Number.isSafeInteger(s.pending_pages)||s.pending_pages<0||s.indexed_pages+s.pending_pages!==s.pages||!Number.isSafeInteger(s.chunks)||s.chunks<0) return json({error:"EXTRACTION_INVALID"},400);
+      const count=await db.from("library_chunks").select("ordinal",{count:"exact",head:true}).eq("document_id",doc.id);
+      const expected=doc.source_kind==="literature"?s.chunks:0;
+      if(count.error||count.count!==expected) return json({error:"CHUNK_COUNT"},409);
+      const updated=await db.from("library_documents").update({extraction_state:s.pending_pages?"partial":"text_extracted",indexed_pages:doc.source_kind==="literature"?s.indexed_pages:0,
+        pending_pages:s.pending_pages,extraction_version:s.version,evidence_enabled:doc.source_kind==="literature"&&s.chunks>0,updated_at:new Date().toISOString()}).eq("id",doc.id);
+      return updated.error?json({error:"FINALIZE"},503):json({ok:true,chunks:expected});
+    }
+    return json({error:"ACTION"},400);
+  } catch { return json({error:"IMPORT_FAILED"},500); }
+});

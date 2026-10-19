@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local study backups and Supabase CLI scratch files
+/.egel-estudio-v2-backup-*/
+/supabase/.temp/

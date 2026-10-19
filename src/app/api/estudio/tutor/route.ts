@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { BANK_ID, StudyError, type Question } from "@/lib/estudio/domain";
 import { handleTutor } from "@/lib/tutor/handler";
 import { tutorConfig } from "@/lib/tutor/gemini";
+import { SHARED_BASE_PROMPT_VERSIONS, selectSharedBase } from "@/lib/tutor/shared-base";
+import { TutorError } from "@/lib/tutor/domain";
 
 async function access() {
   const db = await createClient();
@@ -10,6 +12,12 @@ async function access() {
   if (error || !data.user || data.user.is_anonymous) return null;
   const uid = data.user.id;
   return { uid,
+    async sharedBase(q: Question) {
+      const r = await db.from("tutor_base_explanations").select("id,model,prompt_version,editorial_revision,body,citations,reviewed_at")
+        .eq("question_id",q.id).eq("question_version",q.version).in("prompt_version",SHARED_BASE_PROMPT_VERSIONS).limit(3);
+      if (r.error) throw new TutorError("TUTOR_BASE_UNAVAILABLE",503);
+      return selectSharedBase(r.data);
+    },
     async question(id: string) {
       const r = await db.from("questions").select("id,bank_id,position,version,source_number,stem,options,source_pages,review_flags,evidence_eligible,scoreable").eq("bank_id",BANK_ID).eq("id",id).maybeSingle<Question>();
       if (r.error) throw new StudyError("DATABASE_UNAVAILABLE",503);
