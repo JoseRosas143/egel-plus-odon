@@ -14,7 +14,7 @@ async function access() {
   return { uid,
     async sharedBase(q: Question) {
       const r = await db.from("tutor_base_explanations").select("id,model,prompt_version,editorial_revision,body,citations,reviewed_at")
-        .eq("question_id",q.id).eq("question_version",q.version).in("prompt_version",SHARED_BASE_PROMPT_VERSIONS).limit(3);
+        .eq("question_id",q.id).eq("question_version",q.version).in("prompt_version",SHARED_BASE_PROMPT_VERSIONS).limit(4);
       if (r.error) throw new TutorError("TUTOR_BASE_UNAVAILABLE",503);
       return selectSharedBase(r.data);
     },

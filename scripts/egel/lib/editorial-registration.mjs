@@ -8,11 +8,23 @@ export function buildEditorialDraftRegistration(preparation,sourceReview,email) 
   if(typeof reviewerEmail!=='string'||reviewerEmail.length>254||!/^[^\s@\0]+@[^\s@\0]+\.[^\s@\0]+$/.test(reviewerEmail))throw Error('REGISTRATION_INVALID_EMAIL');
   if(sourceReview?.humanSourceReview!==true || sourceReview.sourceSharingApproved!==true || sourceReview.questionId!==prepared.question.id ||
     !Array.isArray(sourceReview.edits) || sourceReview.edits.length!==prepared.sources.length)throw Error('REGISTRATION_SOURCE_APPROVAL_REQUIRED');
+  // Legacy single-book receipts remain valid. Multi-book receipts must explicitly
+  // enumerate exactly the approved PDF fingerprints; neither extras nor omissions
+  // may broaden the human-approved source scope.
+  const multiple=Object.hasOwn(sourceReview,'sourcePdfSha256s');
+  const documentHashes=multiple?sourceReview.sourcePdfSha256s:[sourceReview.sourcePdfSha256];
+  const expectedDocuments=new Set(prepared.sources.map(s=>s.documentId));
+  if((multiple&&Object.hasOwn(sourceReview,'sourcePdfSha256')) || !Array.isArray(documentHashes) ||
+    !documentHashes.length || documentHashes.length>6 ||
+    documentHashes.some(id=>typeof id!=='string'||!/^[a-f0-9]{64}$/.test(id)) ||
+    new Set(documentHashes).size!==documentHashes.length || documentHashes.length!==expectedDocuments.size ||
+    documentHashes.some(id=>!expectedDocuments.has(id)))throw Error('REGISTRATION_SOURCE_APPROVAL_MISMATCH');
+  const approvedDocuments=new Set(documentHashes);
   const seen=new Set();
   const sourceApprovalSha256=hashText(JSON.stringify(sourceReview));
   const sources=prepared.sources.map(s=>{
     const matches=sourceReview.edits.filter(e=>e.documentId===s.documentId&&e.pdfPage===s.pdfPage&&e.ordinal===s.localOrdinal&&e.newTextSha256===s.textSha256);
-    if(matches.length!==1 || seen.has(`${s.documentId}:${s.pdfPage}:${s.localOrdinal}`) || s.documentId!==sourceReview.sourcePdfSha256)throw Error('REGISTRATION_SOURCE_APPROVAL_MISMATCH');
+    if(matches.length!==1 || seen.has(`${s.documentId}:${s.pdfPage}:${s.localOrdinal}`) || !approvedDocuments.has(s.documentId))throw Error('REGISTRATION_SOURCE_APPROVAL_MISMATCH');
     seen.add(`${s.documentId}:${s.pdfPage}:${s.localOrdinal}`);const e=matches[0];
     if(typeof e.locator!=='string'||!e.locator.trim()||e.locator.length>500||e.locator.includes('\0')||
       typeof e.reason!=='string'||e.reason.trim().length<20||e.reason.length>1700||e.reason.includes('\0'))throw Error('REGISTRATION_INVALID_LOCATOR');

@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {buildEditorialDraftRegistration} from './lib/editorial-registration.mjs';
 import {editorialQuestionHash} from './lib/editorial-base.mjs';
+import {buildWebEditorialDraftRegistration} from './lib/web-editorial-registration.mjs';
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const ids={one:'11111111-1111-4111-8111-111111111111',two:'22222222-2222-4222-8222-222222222222',reviewer:'33333333-3333-4333-8333-333333333333'};
 const doc='a'.repeat(64),legacyDoc='b'.repeat(64),body='Synthetic offline structural fixture. Not clinical evidence or an answer key. '.repeat(3);
@@ -35,6 +36,7 @@ before(async()=>{
   `);
   for(const file of ['supabase/migrations/20261017044119_shared_tutor_library.sql','supabase/migrations/20261017051546_shared_reviewed_tutor_bases.sql',migration])
     await db.exec(await fs.readFile(file,'utf8'));
+  await db.exec(await fs.readFile('supabase/migrations/20261019042604_reviewed_web_editorial_sources.sql','utf8'));
   for(const [name,id] of Object.entries(ids)){await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[id,name+'@example.invalid']);await db.query('insert into public.profiles values($1)',[id]);}
   for(const id of ['EGEL-2026-034','EGEL-2026-035'])await db.query('insert into public.questions values($1,1,$2,$3)',[id,body,JSON.stringify(['A','B','C'].map(letter=>({letter,text:'Synthetic '+letter})))]);
   for(const [id,enabled] of [[doc,false],[legacyDoc,true]])await db.query(`insert into public.library_documents
@@ -193,6 +195,83 @@ function registrationFixture(){
 }
 const registrationPlan=f=>buildEditorialDraftRegistration(f.preparation,f.sourceReview,'reviewer@example.invalid');
 const executeRegistration=async plan=>(await db.exec(plan.query)).at(-1).rows[0];
+
+const webUrl='https://www.cun.es/diccionario-medico/terminos/lipotimia';
+function webFixture(){
+  const f=registrationFixture(),p=f.preparation;
+  p.editorial.markdown+=' Editorial web supplement '+webUrl;
+  p.editorial.sha256=sha(p.editorial.markdown);p.approval.bodySha256=p.editorial.sha256;
+  const webEvidence=[{url:webUrl,title:'Synthetic web title',publisher:'Synthetic publisher',summary:body,
+    verifiedAt:new Date(Date.now()-60000).toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString(),
+    reviewScope:'Terminology only; no clinical management or dosage.',reviewed:true}];
+  return {...f,input:{bookPreparation:p,webEvidence,approval:{humanApproved:true,scope:'prepare-web-supplement-only',approvedAt:new Date().toISOString(),
+    bodySha256:p.editorial.sha256,webEvidenceSha256:sha(JSON.stringify(webEvidence)),recordedVia:'direct-user-chat'}}};
+}
+const webPlan=f=>buildWebEditorialDraftRegistration(f.input,f.sourceReview,'reviewer@example.invalid');
+
+test('web registration is atomic, review-gated, idempotent and has no fake PDF page',async()=>{
+  const p=webPlan(webFixture()),first=await executeRegistration(p),again=await executeRegistration(p);
+  assert.equal(first.base_id,again.base_id);assert.equal(first.status,'draft');assert.equal(first.web_source_count,1);
+  assert.equal((await db.query('select count(*)::int as n from public.library_reviewed_web_sources')).rows[0].n,1);
+  const b=(await db.query('select * from public.tutor_base_explanations where id=$1',[first.base_id])).rows[0];
+  assert.equal(b.prompt_version,'literature-editorial-web-v1');const c=b.citations.at(-1);
+  assert.equal(c.kind,'reviewed-web');assert.equal(c.url,webUrl);assert(!Object.hasOwn(c,'pdf_page'));assert(!Object.hasOwn(c,'document_id'));
+  assert.equal((await role('authenticated',ids.one,visible)).rows.length,0);
+  await publish(b);await answered();assert.equal((await role('authenticated',ids.one,visible)).rows.length,1);
+  assert.equal((await role('authenticated',ids.two,visible)).rows.length,0);
+  assert.equal((await role('authenticated',ids.one,visible,true)).rows.length,0);
+  const published=await executeRegistration(p);assert.equal(published.status,'published');
+});
+
+test('web raw text, reference column and approval RPC remain backend-only',async()=>{
+  await executeRegistration(webPlan(webFixture()));
+  for(const r of ['anon','authenticated'])await role(r,r==='authenticated'?ids.one:null,async()=>{
+    await failure(()=>db.query('select * from public.library_reviewed_web_sources'),/permission denied/);
+    await failure(()=>db.query('select web_sources from public.tutor_base_explanations'),/permission denied/);
+    await failure(()=>db.query('select public.approve_reviewed_web_source($1,$2,$3,$4,true)',[ids.one,'a'.repeat(64),ids.one,'Unauthorized synthetic request']),/permission denied/);
+  });
+});
+
+test('web changes reset approval and hide dependent published bases',async()=>{
+  const r=await executeRegistration(webPlan(webFixture())),b=(await db.query('select * from public.tutor_base_explanations where id=$1',[r.base_id])).rows[0];
+  await publish(b);await answered();
+  await db.exec("update public.library_reviewed_web_sources set summary=summary||' changed'");
+  assert.equal((await db.query('select status from public.library_reviewed_web_sources')).rows[0].status,'draft');
+  assert.equal((await role('authenticated',ids.one,visible)).rows.length,0);
+  assert.equal((await db.query('select count(*)::int as n from public.question_attempts')).rows[0].n,1);
+});
+
+test('web revocation hides a base and PDF-only legacy hashes remain unchanged',async()=>{
+  const old=await base([source(await approve(await transcription()))]);await publish(old);
+  const hash=old.payload_sha256;await db.query('update public.tutor_base_explanations set body=body where id=$1',[old.id]);
+  assert.equal((await db.query('select payload_sha256 from public.tutor_base_explanations where id=$1',[old.id])).rows[0].payload_sha256,hash);
+  await db.exec('delete from public.tutor_base_explanations; delete from public.library_reviewed_transcriptions');
+  const r=await executeRegistration(webPlan(webFixture())),b=(await db.query('select * from public.tutor_base_explanations where id=$1',[r.base_id])).rows[0];
+  await publish(b);await answered();await db.exec("update public.library_reviewed_web_sources set status='revoked'");
+  assert.equal((await role('authenticated',ids.one,visible)).rows.length,0);
+});
+
+test('expired web evidence prevents approval and rolls back PDF registration',async()=>{
+  const f=webFixture(),w=f.input.webEvidence[0];w.verifiedAt='2020-01-01T00:00:00Z';w.expiresAt='2020-01-02T00:00:00Z';
+  f.input.approval.webEvidenceSha256=sha(JSON.stringify(f.input.webEvidence));
+  await failure(()=>executeRegistration(webPlan(f)),/WEB_REVIEW_STALE/);
+  assert.equal((await db.query('select count(*)::int as n from public.library_reviewed_transcriptions')).rows[0].n,0);
+  assert.equal((await db.query('select count(*)::int as n from public.tutor_base_explanations')).rows[0].n,0);
+});
+
+test('unknown web URLs, fake PDF identities and unapproved changed snapshots fail before SQL',()=>{
+  for(const patch of [{url:'javascript:alert(1)'},{url:webUrl+'?token=secret'},{url:'https://www.cun.es.evil.invalid/'},{pdfPage:1},{reviewed:false}]){
+    const f=webFixture();Object.assign(f.input.webEvidence[0],patch);assert.throws(()=>webPlan(f),/WEB_EVIDENCE_INVALID/);
+  }
+  const f=webFixture();f.input.webEvidence[0].summary+=' modified';assert.throws(()=>webPlan(f),/WEB_APPROVAL_REQUIRED/);
+});
+
+test('malformed web references return false rather than throwing during RLS',async()=>{
+  for(const value of [null,{},[],[null],[1],[{}],[{kind:'reviewed-web',web_source_id:'invalid'}]]){
+    const r=await db.query('select egel_private.shared_base_web_sources_valid($1) as valid',[JSON.stringify(value)]);
+    assert.equal(r.rows[0].valid,Array.isArray(value)&&value.length===0);
+  }
+});
 test('operator registration links an active account, approves exact sources and only inserts a hidden draft',async()=>{
   const plan=registrationPlan(registrationFixture()),r=await executeRegistration(plan);assert.equal(plan.plan.publish,false);assert.equal(plan.plan.newModelCalls,0);
   assert.equal(r.status,'draft');assert.equal(r.prepared_by_reviewer_id,ids.reviewer);assert.equal(r.publication_reviewer_id,null);assert.equal(r.source_count,2);
@@ -243,4 +322,49 @@ test('source approval mismatch and invalid email never create an executable regi
   assert.throws(()=>registrationPlan(f),/REGISTRATION_SOURCE_APPROVAL_MISMATCH/);
   const g=registrationFixture();assert.throws(()=>buildEditorialDraftRegistration(g.preparation,g.sourceReview,'not-an-email'),/REGISTRATION_INVALID_EMAIL/);
   g.sourceReview.humanSourceReview=false;assert.throws(()=>registrationPlan(g),/REGISTRATION_SOURCE_APPROVAL_REQUIRED/);
+});
+
+function multiBookFixture(){
+  const f=registrationFixture();f.preparation.question.id='EGEL-2026-035';
+  f.preparation.approval.questionSha256=editorialQuestionHash(f.preparation.question);
+  f.preparation.evidence[1].documentId=legacyDoc;
+  f.preparation.approval.evidenceSha256=sha(JSON.stringify(f.preparation.evidence));
+  f.sourceReview.questionId='EGEL-2026-035';delete f.sourceReview.sourcePdfSha256;
+  f.sourceReview.sourcePdfSha256s=[doc,legacyDoc];f.sourceReview.edits[1].documentId=legacyDoc;
+  return f;
+}
+
+test('two-book registration remains exact, idempotent and answer-gated for its own question',async()=>{
+  const plan=registrationPlan(multiBookFixture()),first=await executeRegistration(plan),again=await executeRegistration(plan);
+  assert.equal(first.base_id,again.base_id);assert.equal(first.status,'draft');assert.equal(first.source_count,2);
+  const rows=(await db.query('select distinct document_id from public.library_reviewed_transcriptions order by document_id')).rows;
+  assert.deepEqual(rows.map(r=>r.document_id),[doc,legacyDoc]);
+  const b=(await db.query('select * from public.tutor_base_explanations where id=$1',[first.base_id])).rows[0];
+  await publish(b);await answered(ids.one,'EGEL-2026-034');
+  assert.equal((await role('authenticated',ids.one,visible)).rows.length,0);
+  await answered(ids.one,'EGEL-2026-035');assert.equal((await role('authenticated',ids.one,visible)).rows.length,1);
+  assert.equal((await role('authenticated',ids.two,visible)).rows.length,0);
+  await db.query("update public.library_reviewed_transcriptions set status='revoked' where document_id=$1",[legacyDoc]);
+  assert.equal((await role('authenticated',ids.one,visible)).rows.length,0);
+});
+
+test('multi-book approval refuses missing, extra, duplicate, malformed and ambiguous fingerprints',()=>{
+  for(const value of [null,{},[],[doc],[legacyDoc],[doc,legacyDoc,doc],[doc,legacyDoc,'f'.repeat(64)],[doc,'invalid']]){
+    const f=multiBookFixture();f.sourceReview.sourcePdfSha256s=value;
+    assert.throws(()=>registrationPlan(f),/REGISTRATION_SOURCE_APPROVAL_MISMATCH/);
+  }
+  const f=multiBookFixture();f.sourceReview.sourcePdfSha256=doc;
+  assert.throws(()=>registrationPlan(f),/REGISTRATION_SOURCE_APPROVAL_MISMATCH/);
+});
+
+test('multi-book approval cannot reuse the right text hash under another document',()=>{
+  const f=multiBookFixture();f.sourceReview.edits[1].documentId=doc;
+  assert.throws(()=>registrationPlan(f),/REGISTRATION_SOURCE_APPROVAL_MISMATCH/);
+});
+
+test('a later conflict in another approved book rolls back the whole registration',async()=>{
+  await db.query("update public.library_documents set upload_state='pending',evidence_enabled=false where id=$1",[legacyDoc]);
+  await failure(()=>executeRegistration(registrationPlan(multiBookFixture())),/REGISTRATION_SOURCE_CHANGED/);
+  assert.equal((await db.query('select count(*)::int as n from public.library_reviewed_transcriptions')).rows[0].n,0);
+  assert.equal((await db.query('select count(*)::int as n from public.tutor_base_explanations')).rows[0].n,0);
 });

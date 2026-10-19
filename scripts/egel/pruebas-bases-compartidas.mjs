@@ -13,6 +13,18 @@ const shared=await load('src/lib/tutor/shared-base.ts',{'server-only':{},'./doma
 const row={id:'12345678-1234-4234-8234-123456789abc',model:'gemini-3.8-flash',prompt_version:'literature-base-v1',body:'Offline structural fixture, not a clinical explanation. '.repeat(3),reviewed_at:'2026-10-16T12:00:00Z',citations:[{document_id:'a'.repeat(64),catalog_id:'BIB-001',title:'Offline source',pdf_page:10}]};
 test('empty publication remains empty',()=>assert.equal(shared.parseSharedBase(null),null));
 
+const webCitation={kind:'reviewed-web',title:'Lipotimia',publisher:'CUN',url:'https://www.cun.es/diccionario-medico/terminos/lipotimia',verified_at:'2026-10-18T00:00:00Z'};
+test('web supplements have explicit provenance, no invented page and supported variant',()=>{
+  const r={...row,model:'deepseek-flash',prompt_version:'literature-editorial-web-v1',editorial_revision:true,citations:[...row.citations,webCitation]};
+  const m=shared.parseSharedBase(r);assert.equal(m.citations.at(-1).page,null);assert.equal(m.citations.at(-1).href,webCitation.url);
+  assert.equal(m.citations.at(-1).kind,'reviewed-web');
+  for(const patch of [{url:'javascript:alert(1)'},{url:webCitation.url+'?x=1'},{url:'https://evil.invalid'},{pdf_page:1},{document_id:'a'.repeat(64)},{verified_at:'invalid'}])
+    assert.throws(()=>shared.parseSharedBase({...r,citations:[...row.citations,{...webCitation,...patch}]}),/TUTOR_BASE_UNAVAILABLE/);
+  assert.throws(()=>shared.parseSharedBase({...r,prompt_version:'literature-editorial-v1'}),/TUTOR_BASE_UNAVAILABLE/);
+  assert.throws(()=>shared.parseSharedBase({...r,citations:[webCitation]}),/TUTOR_BASE_UNAVAILABLE/);
+  assert.throws(()=>shared.parseSharedBase({...r,citations:row.citations}),/TUTOR_BASE_UNAVAILABLE/);
+});
+
 const editorialRow={...row,id:'22345678-1234-4234-8234-123456789abc',model:'deepseek-flash',prompt_version:'literature-editorial-v1',editorial_revision:true};
 test('editorial DeepSeek has an explicit supported pair and revision marker',()=>{
   assert.equal(shared.parseSharedBase(editorialRow).baseId,editorialRow.id);
@@ -61,8 +73,8 @@ const route=await load('src/app/api/estudio/tutor/route.ts',{'next/server':{conn
 test('actual route uses the session client and selects only supported shared variants',async()=>{
   queries.length=0;routeRows=[editorialRow,row];routeAnswered=true;
   const result=await route.POST(request());assert.equal(result.status,200);assert.equal((await result.json()).messages[0].baseId,editorialRow.id);
-  const lookup=queries.find(q=>q.table==='tutor_base_explanations');assert.deepEqual(lookup.versions,['prompt_version',['literature-base-v1','literature-editorial-v1']]);
-  assert.deepEqual(lookup.filters,[['question_id',q.id],['question_version',q.version]]);assert.equal(lookup.limit,3);
+  const lookup=queries.find(q=>q.table==='tutor_base_explanations');assert.deepEqual(lookup.versions,['prompt_version',['literature-base-v1','literature-editorial-v1','literature-editorial-web-v1']]);
+  assert.deepEqual(lookup.filters,[['question_id',q.id],['question_version',q.version]]);assert.equal(lookup.limit,4);
   assert(!lookup.columns.includes('sources'));assert(!lookup.columns.includes('provenance'));assert.equal(generations,0);
 });
 test('actual route refuses malformed rows and never reads a base before the saved answer',async()=>{

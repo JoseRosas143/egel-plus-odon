@@ -1,4 +1,4 @@
-export type Citation = { page: number; printed: number | null; label: string; href: string };
+export type Citation = { page: number | null; printed: number | null; label: string; href: string; kind?: "reviewed-web"; verifiedAt?: string };
 export type TutorMessage = { id: string; role: "user" | "assistant"; text: string; citations: Citation[]; createdAt: string; origin?: "shared-reviewed"; baseId?: string };
 export type SharedBaseStatus = "available" | "pending" | "answer-required" | "legacy";
 export type TutorHistory = { ok: true; messages: TutorMessage[]; enabled: boolean; covered: boolean; pending: boolean; retryable: boolean; sharedBase?: SharedBaseStatus };

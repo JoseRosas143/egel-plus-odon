@@ -343,3 +343,41 @@ El asesor de seguridad mantiene la advertencia previa de protección contra
 contraseñas filtradas desactivada. No se cambió configuración de Auth ni se
 llamó a modelos. Commit/push y estado del despliegue se verifican por separado
 después de esta validación, sin asumir que un push equivale a un despliegue.
+
+## Segundo reactivo publicado: 035
+
+El usuario confirmó que el 034 aparece correctamente en su cuenta. Después
+autorizó una única generación del 035 con dos transcripciones cotejadas y,
+tras la revisión editorial, autorizó expresamente publicar solo esa versión.
+Los fragmentos corresponden a Medicina en odontología (PDF 206) y Robbins y
+Cotran (PDF 1124). Se preservaron originales, pregunta, notas de límites y
+recibos privados fuera del repositorio. La aprobación de esta explicación no
+constituye una clave oficial, certificación clínica ni aprobación del resto
+del banco.
+
+El preparador de registro ahora admite `sourcePdfSha256s` para varios libros:
+exige el conjunto exacto de huellas aprobadas, sin duplicados, omisiones o
+documentos extra. Rechaza recibos ambiguos con las dos formas a la vez y mantiene
+la compatibilidad con `sourcePdfSha256` del primer piloto. Los cambios de página,
+texto y libro siguen cotejándose por fuente; el SQL solo registra un borrador.
+No se relajaron políticas, controles de revisión ni permisos del alumno.
+
+Cuatro pruebas nuevas de PostgreSQL comprueban registro idempotente de dos
+libros, rechazo de recibos inválidos, bloqueo por la respuesta de otro reactivo,
+acceso solo tras responder el reactivo correcto, revocación y rollback ante
+un conflicto en el segundo libro. Pasan 498 pruebas, TypeScript y lint.
+
+La publicación se hizo mediante el RPC existente, cotejando el hash exacto del
+borrador. Solo se actualizó el encabezado operativo de pendiente de revisión;
+el resto del contenido aprobado permanece idéntico. Las dos fuentes siguen
+válidas y el 034 conserva su huella de publicación. Hay dos bases publicadas.
+La cuenta revisora aún no ha guardado una respuesta al 035: el diagnóstico RLS
+devuelve cero filas para este y una para el 034; sin identidad devuelve cero.
+No se creó una respuesta de alumno para forzar la prueba positiva en remoto.
+
+Esta publicación no realizó llamadas de IA. El registro conserva 3 llamadas
+DeepSeek totales, 37 012 micro-USD de reserva/estimaciones acumuladas y 962 988
+micro-USD disponibles del tope de pruebas; no es una factura confirmada. El
+lector ya desplegado sirve el nuevo registro sin despliegue adicional. Solo
+quedan cambios locales del preparador, pruebas y esta documentación, sin commit
+ni push en esta fase. No se cambiaron notas, respuestas ni veredictos personales.
