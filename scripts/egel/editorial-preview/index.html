@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><title>Revisión editorial privada · EGEL Plus ODON</title>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="/viewer.css"><link rel="stylesheet" href="/katex.css">
+  <script src="/viewer.js" defer></script>
+</head>
+<body>
+  <header class="top"><div><span class="brand">EGEL Plus ODON</span><p>Revisión editorial</p></div><span class="badge">Solo local · Sin publicar</span></header>
+  <main>
+    <div class="toolbar"><div><h1>Del reactivo a sus fuentes</h1><p>Visor del operador. No guarda respuestas, notas ni aprobaciones.</p></div>
+      <label>Reactivo<select id="question" disabled><option>Cargando…</option></select></label>
+    </div>
+    <p id="status" role="status" aria-live="polite">Comprobando el enlace privado…</p>
+    <nav class="mobileTabs" role="tablist" aria-label="Paneles de revisión">
+      <button type="button" role="tab" aria-selected="true" aria-controls="case-panel" data-panel="case-panel" id="case-tab">Reactivo</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="text-panel" data-panel="text-panel" id="text-tab" tabindex="-1">Explicación</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="sources-panel" data-panel="sources-panel" id="sources-tab" tabindex="-1">Fuentes</button>
+    </nav>
+    <div class="panels" id="panels" hidden>
+      <section class="panel mobileActive" id="case-panel" aria-labelledby="case-title"><h2 id="case-title">Reactivo</h2><p id="stem" class="stem"></p><ol id="options" class="options"></ol><p class="muted">Opciones originales. Sin selección ni calificación en este visor.</p></section>
+      <section class="panel" id="text-panel" aria-labelledby="text-title"><div class="panelHeading"><h2 id="text-title">Explicación</h2><span class="badge amber">Pendiente de revisión</span></div>
+        <div id="closed" class="empty"><span class="book" aria-hidden="true">↗</span><h3>Abre el texto para revisarlo</h3><p>Es el borrador existente, no una respuesta generada ahora. Esta acción no registra una respuesta de alumno.</p></div>
+        <div id="explanation" hidden></div><button id="reveal" class="primary" type="button">Abrir explicación</button>
+      </section>
+      <section class="panel" id="sources-panel" aria-labelledby="sources-title"><h2 id="sources-title">Registro de fuentes</h2><p class="muted">Cotejos acotados, no certificación clínica. Permisos comerciales pendientes.</p><div id="sources"></div><details><summary>Integridad y alcance</summary><p id="integrity" class="fingerprint"></p><p class="muted">Cotejo con snapshot local, no con el banco de producción. El contenido se vuelve a validar al abrir cada explicación.</p></details></section>
+    </div>
+    <footer>Preparación independiente, no afiliada a CENEVAL. Este visor no publica contenido ni consulta servicios de IA.</footer>
+  </main>
+</body>
+</html>

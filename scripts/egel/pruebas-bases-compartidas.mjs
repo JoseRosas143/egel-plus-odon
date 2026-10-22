@@ -60,16 +60,17 @@ test('failed cache lookup must not generate a replacement',async()=>{const r=awa
 test('new provider/client identity/prompt fields are rejected',async()=>{for(const patch of [{user_id:'other'},{model:'gpt-expensive'},{personal_verdict:'C'},{question_version:2}])assert((await handler.handleTutor(request('POST',patch),access(),null)).status>=400);assert.equal(generations,0);});
 test('shared cache has no write to study notes, history or verdict',async()=>{const source=await fs.readFile(path.join(root,'src/lib/tutor/shared-base.ts'),'utf8');for(const forbidden of ['.insert(','.update(','.upsert(','askGemini(','writeConversation('])assert(!source.includes(forbidden));});
 
-let routeRows=[editorialRow],routeAnswered=true;const queries=[];
+let routeRows=[editorialRow],routeImportedRows=[],routeAnswered=true;const queries=[];
 const routeDb={auth:{getUser:async()=>({data:{user:{id:'verified-session-user',is_anonymous:false}},error:null})},from(table){
   const query={table,filters:[],columns:null,versions:null};queries.push(query);
   return {select(columns){query.columns=columns;return this;},eq(key,value){query.filters.push([key,value]);return this;},
     in(key,values){query.versions=[key,values];return this;},
     async maybeSingle(){return {data:q,error:null};},
-    async limit(n){query.limit=n;return {data:table==='question_attempts'?(routeAnswered?[{request_id:row.id}]:[]):routeRows,error:null};}};
+    async limit(n){query.limit=n;return {data:table==='question_attempts'?(routeAnswered?[{request_id:row.id}]:[]):table==='tutor_imported_editorials'?routeImportedRows:routeRows,error:null};}};
 }};
+const imported=await load('src/lib/tutor/imported-base.ts',{'server-only':{},'./domain':domain});
 const route=await load('src/app/api/estudio/tutor/route.ts',{'next/server':{connection:async()=>{}},'@/lib/supabase/server':{createClient:async()=>routeDb},
-  '@/lib/estudio/domain':study,'@/lib/tutor/handler':handler,'@/lib/tutor/gemini':{tutorConfig:()=>null},'@/lib/tutor/shared-base':shared,'@/lib/tutor/domain':domain});
+  '@/lib/estudio/domain':study,'@/lib/tutor/handler':handler,'@/lib/tutor/gemini':{tutorConfig:()=>null},'@/lib/tutor/shared-base':shared,'@/lib/tutor/domain':domain,'@/lib/tutor/imported-base':imported});
 test('actual route uses the session client and selects only supported shared variants',async()=>{
   queries.length=0;routeRows=[editorialRow,row];routeAnswered=true;
   const result=await route.POST(request());assert.equal(result.status,200);assert.equal((await result.json()).messages[0].baseId,editorialRow.id);
@@ -80,6 +81,20 @@ test('actual route uses the session client and selects only supported shared var
 test('actual route refuses malformed rows and never reads a base before the saved answer',async()=>{
   queries.length=0;routeAnswered=false;assert.equal((await route.GET(request('GET'))).status,200);
   assert(!queries.some(q=>q.table==='tutor_base_explanations'));
+  assert(!queries.some(q=>q.table==='tutor_imported_editorials'));
   routeAnswered=true;routeRows=[{...editorialRow,editorial_revision:false}];assert.equal((await route.POST(request())).status,503);assert.equal(generations,0);
   routeRows=[editorialRow];
+});
+
+test('actual route returns imported editorial provenance only after own saved answer and never generates',async()=>{
+ const now=Date.now();routeImportedRows=[{id:row.id,format_version:'imported-editorial-v1',body:row.body,
+   reviewed_at:new Date(now-60000).toISOString(),valid_until:new Date(now+86400000).toISOString(),citations:[
+     ['R2','https://www.kidney.org/kidney-topics/creatinine'],['R3','https://cdho.org/factsheets/chronic-kidney-disease/'],
+     ['R4','https://kdigo.org/wp-content/uploads/2026/05/KDIGO-2024-CKD-Guideline-Summary-Recommendations-and-Practice-Points.pdf']
+   ].map(([reference_id,url])=>({kind:'editorial-reference',reference_id,title:'Synthetic source',url,review_scope:'Synthetic scoped check'}))}];
+ routeAnswered=true;queries.length=0;
+ const result=await route.POST(request()),data=await result.json();assert.equal(result.status,200);assert.equal(data.messages[0].editorialImport,true);assert.equal(data.sharedBase,'available');
+ const lookup=queries.find(q=>q.table==='tutor_imported_editorials');assert.equal(lookup.limit,2);assert(!lookup.columns.includes('provenance'));assert(!queries.some(q=>q.table==='tutor_base_explanations'));assert.equal(generations,0);
+ routeImportedRows[0].citations[0].url='https://other.invalid/';assert.equal((await route.POST(request())).status,503);assert.equal(generations,0);
+ routeImportedRows=[];
 });

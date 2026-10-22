@@ -5,6 +5,7 @@ import { handleTutor } from "@/lib/tutor/handler";
 import { tutorConfig } from "@/lib/tutor/gemini";
 import { SHARED_BASE_PROMPT_VERSIONS, selectSharedBase } from "@/lib/tutor/shared-base";
 import { TutorError } from "@/lib/tutor/domain";
+import { IMPORTED_EDITORIAL_IDS, selectImportedEditorial } from "@/lib/tutor/imported-base";
 
 async function access() {
   const db = await createClient();
@@ -13,6 +14,13 @@ async function access() {
   const uid = data.user.id;
   return { uid,
     async sharedBase(q: Question) {
+      if (IMPORTED_EDITORIAL_IDS.includes(q.id)) {
+        const imported = await db.from("tutor_imported_editorials").select("id,format_version,body,citations,reviewed_at,valid_until")
+          .eq("question_id", q.id).eq("question_version", q.version).limit(2);
+        if (imported.error) throw new TutorError("TUTOR_BASE_UNAVAILABLE", 503);
+        const message = selectImportedEditorial(imported.data, q.id);
+        if (message) return message;
+      }
       const r = await db.from("tutor_base_explanations").select("id,model,prompt_version,editorial_revision,body,citations,reviewed_at")
         .eq("question_id",q.id).eq("question_version",q.version).in("prompt_version",SHARED_BASE_PROMPT_VERSIONS).limit(4);
       if (r.error) throw new TutorError("TUTOR_BASE_UNAVAILABLE",503);
